@@ -1,3 +1,7 @@
 .vscode
-out.dSYM
-out
+perft
+engine
+perft.dSYM
+engine.dSYM
+example.txt
+.DS_Store
