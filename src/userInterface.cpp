@@ -29,7 +29,7 @@ std::string chess::position::ascii() {
 chess::position chess::position::fromFen(std::string fen) {
 	if (chess::position::validateFen(fen)) {
 		// Empty position with a valid flag enabled
-		chess::position result = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x04, 0, 0};
+		chess::position result = {{}, {}, 0x04, 0, 0};
 		std::stringstream toTokenize(fen);
 		std::string output;
 		std::array<std::string, 6> tokens;
