@@ -82,20 +82,21 @@ int main(int argc, const char* argv[]) {
 		{"rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", {1, 44, 1486, 62379, 2103487, 89941194}},
 		{"r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10", {1, 46, 2079, 89890, 3894594, 164075551}}};
 
-	if (argc == 2) {
+	if (argc == 3) {
 		do {
 			std::string fen = argv[1];
-			;
 			if (fen.length() <= 2) {
 				std::cout << "\u001b[31mImproper fen string was given - running default tests\n";
 				break;
 			}
 			chess::position testPosition = chess::position::fromFen(fen);
 			std::cout << "\u001b[34m[Test]@Position=" << fen << std::endl;
-			auto moves = testPosition.moves();
-			for (int moveNum = 0; moveNum < moves.size(); moveNum++) {
-				std::cout << "\t\u001b[0m[" << moveNum << "]:[" << moves[moveNum].toString() << "]" << std::endl;
+			std::cout << "\u001b[33m" << testPosition.ascii() << "\u001b[34m" << std::endl;
+			perftResult testResult = perft(std::stoull(argv[2]), testPosition);
+			for (auto& [move, total] : testResult.moves) {
+				std::cout << "\t[" << move.toString() << "]:[" << total << "]\n";
 			}
+	        std::cout << "[Total Nodes Visited]:[" << testResult.total << "]\u001b[0m\n";
 			return 0;
 		} while (false);
 	} else {
