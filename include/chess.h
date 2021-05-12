@@ -170,10 +170,29 @@ struct move {
 	inline u64 destinationSquare() const noexcept { return 1ULL << destination; };
 	inline u16 moveFlags() const noexcept { return flags & 0xFF00; };
     static inline std::string flagToString(u16 flag){
-		return "";
+        switch(flag & 0x0F00){
+            case 0x0200:
+				return "n";
+			case 0x0300:
+				return "b";
+			case 0x0400:
+                return "r";
+			case 0x0500:
+				return "q";
+			case 0x0A00:
+				return "N";
+			case 0x0B00:
+				return "B";
+			case 0x0C00:
+				return "R";
+			case 0x0D00:
+				return "Q";
+			default:
+				return "";
+		}
 	}
 	std::string toString() const noexcept {
-		return chess::util::squareToAlgebraic(this->origin) + chess::util::squareToAlgebraic(this->destination)/* + flagToString(this->moveFlags())*/;
+		return chess::util::squareToAlgebraic(this->origin) + chess::util::squareToAlgebraic(this->destination) + flagToString(this->flags);
 	};
 };
 
@@ -194,16 +213,17 @@ struct position {
 	u64 enPassantTargetSquare;
 
 	std::vector<move> moves();
+	chess::u64 attacks(chess::util::constants::boardModifiers turn);
 	position move(move desiredMove);
-	inline u64 bishopAttacks(u8 bishopLocation) const noexcept;
-	inline u64 rookAttacks(u8 rookLocation) const noexcept;
-	inline u64 knightAttacks(u8 knightLocation) const noexcept;
-	inline u64 kingAttacks(u8 kingLocation) const noexcept;
-	inline u64 pawnAttacks(u8 squareFrom) const noexcept;
-	u64 positiveRayAttacks(u8 location, util::constants::attackRayDirection direction) const noexcept;
-	u64 negativeRayAttacks(u8 location, util::constants::attackRayDirection direction) const noexcept;
+	inline u64 bishopAttacks(u8 bishopLocation, chess::util::constants::boardModifiers turn) const noexcept;
+	inline u64 rookAttacks(u8 rookLocation, chess::util::constants::boardModifiers turn) const noexcept;
+	inline u64 knightAttacks(u8 knightLocation, chess::util::constants::boardModifiers turn) const noexcept;
+	inline u64 kingAttacks(u8 kingLocation, chess::util::constants::boardModifiers turn) const noexcept;
+	inline std::array<u64, 2> pawnAttacks(u8 squareFrom) const noexcept;
+	u64 positiveRayAttacks(u8 location, util::constants::attackRayDirection direction, chess::util::constants::boardModifiers turn) const noexcept;
+	u64 negativeRayAttacks(u8 location, util::constants::attackRayDirection direction, chess::util::constants::boardModifiers turn) const noexcept;
 	std::string ascii();
-	inline u8 turn() const noexcept { return flags & 0x08; };	  // 0 - 1 (1 bit)
+	inline chess::util::constants::boardModifiers turn() const noexcept { return static_cast<chess::util::constants::boardModifiers>(flags & 0x08); };  // 0 - 1 (1 bit)
 	inline chess::u64 occupied() const noexcept { return bitboards[chess::util::constants::boardModifiers::white] | bitboards[chess::util::constants::boardModifiers::black]; };
 	inline chess::u64 empty() const noexcept { return ~occupied(); };
 	inline u8 castle() const noexcept { return flags & 0xF0; };	 // 0 - 15 (4 bits)
