@@ -2,7 +2,7 @@
 
 #include "../include/chess.h"
 
-std::string chess::debugging::convert(u64 bitBoard) {
+std::string chess::debugging::bitboardToString(u64 bitBoard) {
 	std::string result;
 	u64 cmp = 1ULL << 63;
 	for (std::size_t y = 8; y > 0; y--) {
@@ -21,36 +21,12 @@ std::string chess::util::squareToAlgebraic(chess::u8 square) {
 	return file[square % 8] + rank[square / 8];
 }
 
-chess::u8 chess::util::ctz64(u64 bitboard) {
-#if defined(__clang__) || defined(__GNUC__)
-	return __builtin_ctzll(bitboard);
-#else
-	static_assert(-1);
-#endif
-}
-
-chess::u8 chess::util::clz64(u64 bitboard) {
-#if defined(__clang__) || defined(__GNUC__)
-	return __builtin_clzll(bitboard);
-#else
-	static_assert(-1);
-#endif
-}
-
 // Ignoring for the time being, as it is not necessary to either the AI or engine
 bool chess::position::validateFen(std::string fen) {
 	return true;
 }
 
-char chess::util::constants::pieceToChar(chess::util::constants::boardModifiers piece) {
+char chess::util::constants::pieceToChar(chess::util::constants::boardAnnotations piece) {
 	constexpr char conversionList[] = {'*', 'p', 'n', 'b', 'r', 'q', 'k', '*', '*', 'P', 'N', 'B', 'R', 'Q', 'K', '*'};
 	return conversionList[piece];
-}
-
-chess::util::constants::boardModifiers chess::util::colorOf(chess::util::constants::boardModifiers piece){
-	return static_cast<chess::util::constants::boardModifiers>(piece & 0x08);
-}
-
-chess::util::constants::boardModifiers chess::util::nullOf(chess::util::constants::boardModifiers piece){
-	return static_cast<chess::util::constants::boardModifiers>(piece | 0x07);
 }

@@ -11,8 +11,22 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 namespace util {
 constexpr u64 iter = 1ULL << 63;
-u8 ctz64(u64 bitboard);
-u8 clz64(u64 bitboard);
+inline chess::u8 ctz64(const u64 bitboard) noexcept {
+#if defined(__clang__) || defined(__GNUC__)
+	return __builtin_ctzll(bitboard);
+#else
+	static_assert(-1);
+#endif
+}
+
+inline chess::u8 clz64(const u64 bitboard) noexcept {
+#if defined(__clang__) || defined(__GNUC__)
+	return __builtin_clzll(bitboard);
+#else
+	static_assert(-1);
+#endif
+}
+
 inline constexpr u8 algebraicToSquare(const std::string& algebraic) {
 	if (algebraic.length() == 2) {
 		u8 total = 0;
@@ -40,7 +54,7 @@ enum attackRayDirection {
 	west = 6,
 	northWest = 7
 };
-enum boardModifiers : chess::u8 {
+enum boardAnnotations : chess::u8 {
 	black = 0x0,
 	blackPawn = 0x1,
 	blackKnight = 0x2,
@@ -58,7 +72,19 @@ enum boardModifiers : chess::u8 {
 	whiteKing = 0xE,
 	whiteNull = 0xF
 };
-char pieceToChar(chess::util::constants::boardModifiers piece);
+
+enum squareAnnotations : chess::u8 {
+	h1, g1, f1, e1, d1, c1, b1, a1,
+    h2, g2, f2, e2, d2, c2, b2, a2,
+    h3, g3, f3, e3, d3, c3, b3, a3,
+    h4, g4, f4, e4, d4, c4, b4, a4,
+    h5, g5, f5, e5, d5, c5, b5, a5,
+    h6, g6, f6, e6, d6, c6, b6, a6,
+    h7, g7, f7, e7, d7, c7, b7, a7,
+    h8, g8, f8, e8, d8, c8, b8, a8
+};
+
+char pieceToChar(chess::util::constants::boardAnnotations piece);
 constexpr std::array<std::array<chess::u64, 64>, 8> generateAttackRays() {
 	std::array<std::array<chess::u64, 64>, 8> resultRays{};
 	constexpr chess::u64 horizontal = 0xFFULL;
@@ -99,8 +125,8 @@ constexpr std::array<std::array<chess::u64, 64>, 8> generateAttackRays() {
 	}
 	return resultRays;
 }
-constexpr std::array<std::array<chess::u64, 64>, 8> attackRays = generateAttackRays();
 
+namespace{
 constexpr std::array<chess::u64, 64> generateKnightJumps() {
 	constexpr std::array<chess::u64, 8> fileMask = {
 		0xC0C0C0C0C0C0C0C0ULL, 0x8080808080808080ULL, 0x0ULL, 0x0ULL, 0x0Ull, 0x0ULL, 0x0101010101010101ULL, 0x0303030303030303ULL};
@@ -116,7 +142,6 @@ constexpr std::array<chess::u64, 64> generateKnightJumps() {
 
 	return resultJumps;
 }
-constexpr std::array<chess::u64, 64> knightJumps = generateKnightJumps();
 
 constexpr std::array<chess::u64, 64> generateKingAttacks() {
 	constexpr std::array<chess::u64, 8> fileMask = {
@@ -133,7 +158,6 @@ constexpr std::array<chess::u64, 64> generateKingAttacks() {
 
 	return resultJumps;
 }
-constexpr std::array<chess::u64, 64> kingAttacks = generateKingAttacks();
 
 constexpr std::array<std::array<chess::u64, 64>, 2> generatePawnAttacks() {
 	constexpr std::array<chess::u64, 8> fileMask = {
@@ -141,31 +165,41 @@ constexpr std::array<std::array<chess::u64, 64>, 2> generatePawnAttacks() {
 	std::array<std::array<chess::u64, 64>, 2> resultAttacks{};
 	constexpr chess::u64 defaultAttackWhite = 0x0280ULL;
 	for (std::size_t i = 0; i < 64; i++) {
-		resultAttacks[1][i] = (defaultAttackWhite << i) & ~fileMask[i % 8] & ~0xFFFFULL;
+		resultAttacks[1][i] = (defaultAttackWhite << i) & ~fileMask[i % 8] & ~0xFFULL;
 	}
 
     constexpr chess::u64 defaultAttackBlack = 0x0140000000000000ULL;
 	for (std::size_t i = 0; i < 64; i++) {
-		resultAttacks[0][i] = (defaultAttackBlack >> (63-i)) & ~fileMask[i % 8] & ~0xFFFF000000000000ULL;
+		resultAttacks[0][i] = (defaultAttackBlack >> (63-i)) & ~fileMask[i % 8] & ~0xFF00000000000000ULL;
 	}
 
 	return resultAttacks;
 }
+}
+constexpr std::array<std::array<chess::u64, 64>, 8> attackRays = generateAttackRays();
+constexpr std::array<chess::u64, 64> kingAttacks = generateKingAttacks();
+constexpr std::array<chess::u64, 64> knightJumps = generateKnightJumps();
 constexpr std::array<std::array<chess::u64, 64>, 2> pawnAttacks = generatePawnAttacks();
 }  // namespace constants
-chess::util::constants::boardModifiers colorOf(chess::util::constants::boardModifiers piece);
-chess::util::constants::boardModifiers nullOf(chess::util::constants::boardModifiers piece);
-inline chess::u16 isPiece(chess::util::constants::boardModifiers piece) { return (piece & 0x7) == 0x7 ? 0x0000 : 0x1000; };
+
+inline constexpr chess::util::constants::boardAnnotations colorOf(const chess::util::constants::boardAnnotations piece) noexcept {
+	return static_cast<chess::util::constants::boardAnnotations>(piece & 0x08);
+}
+
+inline constexpr chess::util::constants::boardAnnotations nullOf(const chess::util::constants::boardAnnotations piece) noexcept {
+	return static_cast<chess::util::constants::boardAnnotations>(piece | 0x07);
+}
+inline constexpr chess::u16 isPiece(chess::util::constants::boardAnnotations piece) { return (piece & 0x7) == 0x7 ? 0x0000 : 0x1000; };
 }  // namespace util
 
 // More stores the
-struct move {
+struct moveData {
 	u8 origin;
 	u8 destination;
 	u16 flags;
-	inline chess::util::constants::boardModifiers capturedPiece() const noexcept { return static_cast<chess::util::constants::boardModifiers>(flags & 0x000F); };
-	inline chess::util::constants::boardModifiers movePiece() const noexcept { return static_cast<chess::util::constants::boardModifiers>((flags & 0x00F0) >> 4); };
-	inline chess::util::constants::boardModifiers promotionPiece() const noexcept { return static_cast<chess::util::constants::boardModifiers>((flags & 0x0F00) >> 8); };
+	inline chess::util::constants::boardAnnotations capturedPiece() const noexcept { return static_cast<chess::util::constants::boardAnnotations>(flags & 0x000F); };
+	inline chess::util::constants::boardAnnotations movePiece() const noexcept { return static_cast<chess::util::constants::boardAnnotations>((flags & 0x00F0) >> 4); };
+	inline chess::util::constants::boardAnnotations promotionPiece() const noexcept { return static_cast<chess::util::constants::boardAnnotations>((flags & 0x0F00) >> 8); };
 	inline u64 originSquare() const noexcept { return 1ULL << origin; };
 	inline u64 destinationSquare() const noexcept { return 1ULL << destination; };
 	inline u16 moveFlags() const noexcept { return flags & 0xFF00; };
@@ -196,35 +230,58 @@ struct move {
 	};
 };
 
+class moveList{
+    private:
+        std::array<moveData, 254> moves;
+        moveData* insertLocation;
+    public:
+        moveList(): moves(), insertLocation(moves.data()){}
+        moveList(const moveList& other) : moves(other.moves), insertLocation((this->moves.data() - other.moves.data()) + other.insertLocation){}
+        inline void append(const moveData moveToInsert) noexcept { *(insertLocation++) = moveToInsert;}
+        inline moveData* begin() noexcept { return moves.data(); }
+        inline moveData* end() noexcept { return insertLocation; }
+        inline u64 size() noexcept {return end() - begin();}
+};
+
 struct position {
 	// Most to least information dense
 	std::array<chess::u64, 16> bitboards;
 	
-    std::array<chess::u8, 32> indexToPiece;
-	inline chess::util::constants::boardModifiers pieceAtIndex(u8 index) const noexcept {
-		return static_cast<chess::util::constants::boardModifiers>(index % 2 ? indexToPiece[index / 2] & 0x0F : (indexToPiece[index / 2] & 0xF0) >> 4);
-	}
-	inline void insertPieceAtIndex(u8 index, chess::util::constants::boardModifiers piece) noexcept {
-		indexToPiece[index / 2] = (index % 2 ? (indexToPiece[index / 2] & 0xF0) | piece : (indexToPiece[index / 2] & 0x0F) | (piece << 4));
-	}
+    std::array<chess::util::constants::boardAnnotations, 64> pieceAtIndex;
 
 	u8 flags;
 	u8 halfMoveClock;
 	u64 enPassantTargetSquare;
 
-	std::vector<move> moves();
-	chess::u64 attacks(chess::util::constants::boardModifiers turn);
-	position move(move desiredMove);
-	inline u64 bishopAttacks(u8 bishopLocation, chess::util::constants::boardModifiers turn) const noexcept;
-	inline u64 rookAttacks(u8 rookLocation, chess::util::constants::boardModifiers turn) const noexcept;
-	inline u64 knightAttacks(u8 knightLocation, chess::util::constants::boardModifiers turn) const noexcept;
-	inline u64 kingAttacks(u8 kingLocation, chess::util::constants::boardModifiers turn) const noexcept;
+	moveList moves();
+    chess::u64 attacks(chess::util::constants::boardAnnotations turn);
+	bool squareAttacked(chess::util::constants::squareAnnotations square);
+	position move(moveData desiredMove);
+	inline u64 bishopAttacks(u8 bishopLocation, chess::util::constants::boardAnnotations turn) const noexcept;
+	inline u64 rookAttacks(u8 rookLocation, chess::util::constants::boardAnnotations turn) const noexcept;
+	inline u64 knightAttacks(u8 knightLocation, chess::util::constants::boardAnnotations turn) const noexcept;
+	inline u64 kingAttacks(u8 kingLocation, chess::util::constants::boardAnnotations turn) const noexcept;
 	inline std::array<u64, 2> pawnAttacks(u8 squareFrom) const noexcept;
-	u64 positiveRayAttacks(u8 location, util::constants::attackRayDirection direction, chess::util::constants::boardModifiers turn) const noexcept;
-	u64 negativeRayAttacks(u8 location, util::constants::attackRayDirection direction, chess::util::constants::boardModifiers turn) const noexcept;
+    template <util::constants::attackRayDirection direction>
+    chess::u64 positiveRayAttacks(u8 squareFrom, chess::util::constants::boardAnnotations turn) const noexcept {
+        chess::u64 attacks = chess::util::constants::attackRays[direction][squareFrom];
+        chess::u64 blocker = (attacks & this->occupied()) | 0x8000000000000000;
+        squareFrom = chess::util::ctz64(blocker);
+        attacks ^= chess::util::constants::attackRays[direction][squareFrom];
+        return attacks;
+    }
+
+    template <util::constants::attackRayDirection direction>
+    chess::u64 negativeRayAttacks(u8 squareFrom, chess::util::constants::boardAnnotations turn) const noexcept {
+        chess::u64 attacks = chess::util::constants::attackRays[direction][squareFrom];
+        chess::u64 blocker = (attacks & this->occupied()) | 0x1;
+        squareFrom = 63U - chess::util::clz64(blocker);
+        attacks ^= chess::util::constants::attackRays[direction][squareFrom];
+        return attacks;
+    }
 	std::string ascii();
-	inline chess::util::constants::boardModifiers turn() const noexcept { return static_cast<chess::util::constants::boardModifiers>(flags & 0x08); };  // 0 - 1 (1 bit)
-	inline chess::u64 occupied() const noexcept { return bitboards[chess::util::constants::boardModifiers::white] | bitboards[chess::util::constants::boardModifiers::black]; };
+	inline chess::util::constants::boardAnnotations turn() const noexcept { return static_cast<chess::util::constants::boardAnnotations>(flags & 0x08); };  // 0 - 1 (1 bit)
+	inline chess::u64 occupied() const noexcept { return bitboards[chess::util::constants::boardAnnotations::white] | bitboards[chess::util::constants::boardAnnotations::black]; };
 	inline chess::u64 empty() const noexcept { return ~occupied(); };
 	inline u8 castle() const noexcept { return flags & 0xF0; };	 // 0 - 15 (4 bits)
 	inline bool valid() const noexcept { return flags & 0x04; };  // 0 - 1 (1 bit)
@@ -243,19 +300,19 @@ struct position {
 struct game {
 	std::vector<position> gameHistory;
 
-	std::vector<move> moves();
+	moveList moves();
 	bool finished();
 	inline position currentPosition() { return gameHistory.back(); };
-	void move(move desiredMove);
+	void move(moveData desiredMove);
 	bool undo();
 	inline u8 result() { return 0; };  // unused
 };
 
 game defaultGame();
-move strToMove(std::string move);
+moveData strToMove(std::string move);
 
 namespace debugging {
-std::string convert(u64 bitBoard);
+std::string bitboardToString(u64 bitBoard);
 }
 
 }  // namespace chess
