@@ -2,7 +2,7 @@
 
 #include "../include/chess.h"
 
-std::vector<chess::move> chess::game::moves() {
+chess::moveList chess::game::moves() {
 	// Check for 3-fold Repetition
 	/*if(this->gameHistory.size() >= 5){
 		if (chess::position::pieceEqual(this->gameHistory[this->gameHistory.size() - 3], this->currentPosition()) && chess::position::pieceEqual(this->gameHistory[this->gameHistory.size() - 5], this->currentPosition())){
@@ -13,178 +13,142 @@ std::vector<chess::move> chess::game::moves() {
 	return this->currentPosition().moves();
 }
 
-std::vector<chess::move> chess::position::moves() {
-	std::vector<chess::move> pseudoLegalMoves;
-	const auto importAttacksToMoves = [&](chess::u64 attackBoard, chess::u8 pieceFrom, chess::u16 flagModifier) {
+chess::moveList chess::position::moves() {
+    using namespace chess;
+    using namespace chess::util;
+    using namespace chess::util::constants;
+
+    boardAnnotations currentTurnColor = this->turn();
+    u64 notCurrentColor = (currentTurnColor ? ~this->bitboards[chess::util::constants::boardAnnotations::white] : ~this->bitboards[chess::util::constants::boardAnnotations::black]);
+    moveList pseudoLegalMoves; // chess::move = 4 bytes * 254 + 8 byte pointer = 1KB
+	const auto importAttacksToMoves = [&](u64 attackBoard, chess::u8 pieceFrom, chess::u16 flagModifier) {
+        attackBoard &= notCurrentColor;
 		while (attackBoard) {
 			chess::u8 pieceTo = chess::util::ctz64(attackBoard);
-			chess::util::constants::boardModifiers capturedPiece = pieceAtIndex(pieceTo);
-			pseudoLegalMoves.push_back({pieceFrom, pieceTo, static_cast<u16>(flagModifier | chess::util::isPiece(capturedPiece) | (pieceAtIndex(pieceFrom) << 4) | capturedPiece)});
+			boardAnnotations capturedPiece = this->pieceAtIndex[pieceTo];
+			pseudoLegalMoves.append({pieceFrom, pieceTo, static_cast<u16>(flagModifier | chess::util::isPiece(capturedPiece) | ((this->pieceAtIndex[pieceFrom]) << 4) | capturedPiece)});
 			attackBoard ^= chess::util::bitboardFromIndex(pieceTo);
 		}
 	};
 
-	if (this->turn()) {
-		// Find bishop moves
-		chess::u64 remainingWhiteBishops = this->bitboards[chess::util::constants::boardModifiers::whiteBishop];
-		while (remainingWhiteBishops) {
-			chess::u8 squareFrom = chess::util::ctz64(remainingWhiteBishops);
-			importAttacksToMoves(bishopAttacks(squareFrom, this->turn()), squareFrom, 0x0);
-			remainingWhiteBishops ^= chess::util::bitboardFromIndex(squareFrom);
-		}
+    u64 remainingBishops = this->bitboards[boardAnnotations::blackBishop | currentTurnColor] | this->bitboards[boardAnnotations::blackQueen | currentTurnColor]; // Queen is a rook & bishop
+    u64 remainingRooks = this->bitboards[boardAnnotations::blackRook | currentTurnColor] | this->bitboards[boardAnnotations::blackQueen | currentTurnColor]; // Queen is a rook & bishop
+    u64 remainingKnights = this->bitboards[boardAnnotations::blackKnight | currentTurnColor];
 
-		// Find rook moves
-		chess::u64 remainingWhiteRooks = this->bitboards[chess::util::constants::boardModifiers::whiteRook];
-		while (remainingWhiteRooks) {
-			chess::u8 squareFrom = chess::util::ctz64(remainingWhiteRooks);
-			importAttacksToMoves(rookAttacks(squareFrom, this->turn()), squareFrom, 0x0);
-			remainingWhiteRooks ^= chess::util::bitboardFromIndex(squareFrom);
-		}
+    // Find bishop moves
+    while (remainingBishops) {
+        chess::u8 squareFrom = chess::util::ctz64(remainingBishops);
+        importAttacksToMoves(bishopAttacks(squareFrom, currentTurnColor), squareFrom, 0x0);
+        remainingBishops ^= chess::util::bitboardFromIndex(squareFrom);
+    }
 
-		// Find queen moves
-		chess::u64 remainingWhiteQueens = this->bitboards[chess::util::constants::boardModifiers::whiteQueen];
-		while (remainingWhiteQueens) {
-			chess::u8 squareFrom = chess::util::ctz64(remainingWhiteQueens);
-			importAttacksToMoves(bishopAttacks(squareFrom, this->turn()) | rookAttacks(squareFrom, this->turn()), squareFrom, 0x0);
+    // Find rook moves
+    while (remainingRooks) {
+        chess::u8 squareFrom = chess::util::ctz64(remainingRooks);
+        importAttacksToMoves(rookAttacks(squareFrom, currentTurnColor), squareFrom, 0x0);
+        remainingRooks ^= chess::util::bitboardFromIndex(squareFrom);
+    }
 
-			remainingWhiteQueens ^= chess::util::bitboardFromIndex(squareFrom);
-		}
+    // Find knight moves
+    while (remainingKnights) {
+        chess::u8 squareFrom = chess::util::ctz64(remainingKnights);
+        importAttacksToMoves(knightAttacks(squareFrom, currentTurnColor), squareFrom, 0x0);
+        remainingKnights ^= chess::util::bitboardFromIndex(squareFrom);
+    }
 
-		// Find knight moves
-		chess::u64 remainingWhiteKnights = this->bitboards[chess::util::constants::boardModifiers::whiteKnight];
-		while (remainingWhiteKnights) {
-			chess::u8 squareFrom = chess::util::ctz64(remainingWhiteKnights);
-			importAttacksToMoves(knightAttacks(squareFrom, this->turn()), squareFrom, 0x0);
-			remainingWhiteKnights ^= chess::util::bitboardFromIndex(squareFrom);
-		}
-
+	if (currentTurnColor) {
 		// Find king moves
 		{
-		    chess::u8 squareFrom = chess::util::ctz64(this->bitboards[chess::util::constants::boardModifiers::whiteKing]);
-		    importAttacksToMoves(kingAttacks(squareFrom, this->turn()), squareFrom, 0x0);
-			chess::u64 attackBoard = this->attacks(static_cast<chess::util::constants::boardModifiers>((this->turn() ^ 0x08)));
+		    chess::u8 squareFrom = chess::util::ctz64(this->bitboards[boardAnnotations::whiteKing]);
+		    importAttacksToMoves(kingAttacks(squareFrom, currentTurnColor), squareFrom, 0x0);
+			chess::u64 attackBoard = this->attacks(static_cast<boardAnnotations>((currentTurnColor ^ 0x08)));
 			if (this->castleWK()) {
-				if (!(this->occupied() & (chess::util::bitboardFromIndex(chess::util::algebraicToSquare("g1")) | chess::util::bitboardFromIndex(chess::util::algebraicToSquare("f1")))) &&
-					!(attackBoard & (chess::util::bitboardFromIndex(chess::util::algebraicToSquare("e1")) | chess::util::bitboardFromIndex(chess::util::algebraicToSquare("f1")) | chess::util::bitboardFromIndex(chess::util::algebraicToSquare("g1"))))) {
-					pseudoLegalMoves.push_back({squareFrom, chess::util::algebraicToSquare("g1"), static_cast<u16>(0x2000 | (chess::util::constants::boardModifiers::whiteKing << 4))});
+				if (!(this->occupied() & (bitboardFromIndex(squareAnnotations::g1) | bitboardFromIndex(squareAnnotations::f1))) &&
+					!(attackBoard & (bitboardFromIndex(squareAnnotations::e1) | bitboardFromIndex(squareAnnotations::f1) | bitboardFromIndex(squareAnnotations::g1)))) {
+					pseudoLegalMoves.append({squareFrom, squareAnnotations::g1, static_cast<u16>(0x2000 | (boardAnnotations::whiteKing << 4))});
 				}
 			}
 			if (this->castleWQ()) {
-				if (!(this->occupied() & (chess::util::bitboardFromIndex(chess::util::algebraicToSquare("b1")) | chess::util::bitboardFromIndex(chess::util::algebraicToSquare("c1")) | chess::util::bitboardFromIndex(chess::util::algebraicToSquare("d1")))) &&
-					!(attackBoard & (chess::util::bitboardFromIndex(chess::util::algebraicToSquare("e1")) | chess::util::bitboardFromIndex(chess::util::algebraicToSquare("d1")) | chess::util::bitboardFromIndex(chess::util::algebraicToSquare("c1"))))) {
-					pseudoLegalMoves.push_back({squareFrom, chess::util::algebraicToSquare("c1"), static_cast<u16>(0x3000 | (chess::util::constants::boardModifiers::whiteKing << 4))});
+				if (!(this->occupied() & (bitboardFromIndex(squareAnnotations::b1) | bitboardFromIndex(squareAnnotations::c1) | bitboardFromIndex(squareAnnotations::d1))) &&
+					!(attackBoard & (bitboardFromIndex(squareAnnotations::e1) | bitboardFromIndex(squareAnnotations::d1) | bitboardFromIndex(squareAnnotations::c1)))) {
+					pseudoLegalMoves.append({squareFrom, squareAnnotations::c1, static_cast<u16>(0x3000 | (boardAnnotations::whiteKing << 4))});
 				}
 			}
 		}
 
 		// Find pawn moves
-		chess::u64 remainingWhitePawns = this->bitboards[chess::util::constants::boardModifiers::whitePawn];
+		chess::u64 remainingWhitePawns = this->bitboards[boardAnnotations::whitePawn];
 		while (remainingWhitePawns) {
 			chess::u8 squareFrom = chess::util::ctz64(remainingWhitePawns);
 			std::array<chess::u64, 2> attackRaw = pawnAttacks(squareFrom);
 			importAttacksToMoves(attackRaw[0] & ~0xFF00000000000000ULL & ~this->enPassantTargetSquare, squareFrom, 0x0);
 			importAttacksToMoves(attackRaw[1] & ~0xFF00000000000000ULL & ~this->enPassantTargetSquare, squareFrom, 0x8000);
 			if (attackRaw[0] & this->enPassantTargetSquare) {
-				pseudoLegalMoves.push_back({squareFrom, chess::util::ctz64(this->enPassantTargetSquare), 0x6000 | (chess::util::constants::whitePawn << 4) | chess::util::constants::blackPawn});
+				pseudoLegalMoves.append({squareFrom, chess::util::ctz64(this->enPassantTargetSquare), 0x6000 | (whitePawn << 4) | blackPawn});
 			}
 			chess::u64 promotionSquares = attackRaw[0] & 0xFF00000000000000ULL;
 			while (promotionSquares) {
 				chess::u8 pieceTo = chess::util::ctz64(promotionSquares);
-				auto pieceCaptured = pieceAtIndex(pieceTo);
+				auto pieceCaptured = this->pieceAtIndex[pieceTo];
 				auto pieceCapturedFlag = chess::util::isPiece(pieceCaptured);
-				pseudoLegalMoves.push_back({squareFrom, pieceTo, static_cast<u16>(pieceCapturedFlag | (chess::util::constants::boardModifiers::whiteKnight << 8) | (chess::util::constants::boardModifiers::whitePawn << 4) | pieceCaptured)});
-				pseudoLegalMoves.push_back({squareFrom, pieceTo, static_cast<u16>(pieceCapturedFlag | (chess::util::constants::boardModifiers::whiteBishop << 8) | (chess::util::constants::boardModifiers::whitePawn << 4) | pieceCaptured)});
-				pseudoLegalMoves.push_back({squareFrom, pieceTo, static_cast<u16>(pieceCapturedFlag | (chess::util::constants::boardModifiers::whiteRook << 8) | (chess::util::constants::boardModifiers::whitePawn << 4) | pieceCaptured)});
-				pseudoLegalMoves.push_back({squareFrom, pieceTo, static_cast<u16>(pieceCapturedFlag | (chess::util::constants::boardModifiers::whiteQueen << 8) | (chess::util::constants::boardModifiers::whitePawn << 4) | pieceCaptured)});
+				pseudoLegalMoves.append({squareFrom, pieceTo, static_cast<u16>(pieceCapturedFlag | (boardAnnotations::whiteKnight << 8) | (boardAnnotations::whitePawn << 4) | pieceCaptured)});
+				pseudoLegalMoves.append({squareFrom, pieceTo, static_cast<u16>(pieceCapturedFlag | (boardAnnotations::whiteBishop << 8) | (boardAnnotations::whitePawn << 4) | pieceCaptured)});
+				pseudoLegalMoves.append({squareFrom, pieceTo, static_cast<u16>(pieceCapturedFlag | (boardAnnotations::whiteRook << 8) | (boardAnnotations::whitePawn << 4) | pieceCaptured)});
+				pseudoLegalMoves.append({squareFrom, pieceTo, static_cast<u16>(pieceCapturedFlag | (boardAnnotations::whiteQueen << 8) | (boardAnnotations::whitePawn << 4) | pieceCaptured)});
 				promotionSquares ^= chess::util::bitboardFromIndex(pieceTo);
 			}
 
 			remainingWhitePawns ^= chess::util::bitboardFromIndex(squareFrom);
 		}
-		std::vector<chess::move> legalMoves;
+		
+        moveList legalMoves;
 
 		for (auto pseudoLegalMove : pseudoLegalMoves) {
-			
-				//std::cout << "testing move " << pseudoLegalMove.toString() << std::endl;
-				chess::position movedBoard = this->move(pseudoLegalMove);
-			chess::u64 attackBoard = movedBoard.attacks(static_cast<chess::util::constants::boardModifiers>(movedBoard.turn()));
-			if ((attackBoard & movedBoard.bitboards[chess::util::constants::boardModifiers::whiteKing]) == 0) {
-				legalMoves.push_back(pseudoLegalMove);
+			chess::position movedBoard = this->move(pseudoLegalMove);
+			if (!movedBoard.squareAttacked(static_cast<squareAnnotations>(ctz64(movedBoard.bitboards[boardAnnotations::whiteKing])))) {
+				legalMoves.append(pseudoLegalMove);
 			}
 		}
 		return legalMoves;
 	} else {
-		// Generate Black's Moves
-		// Find bishop moves
-		chess::u64 remainingBlackBishops = this->bitboards[chess::util::constants::boardModifiers::blackBishop];
-		while (remainingBlackBishops) {
-			chess::u8 squareFrom = chess::util::ctz64(remainingBlackBishops);
-			importAttacksToMoves(bishopAttacks(squareFrom, this->turn()), squareFrom, 0x0);
-			remainingBlackBishops ^= chess::util::bitboardFromIndex(squareFrom);
-		}
-
-		// Find rook moves
-		chess::u64 remainingBlackRooks = this->bitboards[chess::util::constants::boardModifiers::blackRook];
-		while (remainingBlackRooks) {
-			chess::u8 squareFrom = chess::util::ctz64(remainingBlackRooks);
-			importAttacksToMoves(rookAttacks(squareFrom, this->turn()), squareFrom, 0x0);
-			remainingBlackRooks ^= chess::util::bitboardFromIndex(squareFrom);
-		}
-
-		// Find queen moves
-		chess::u64 remainingBlackQueens = this->bitboards[chess::util::constants::boardModifiers::blackQueen];
-		while (remainingBlackQueens) {
-			chess::u8 squareFrom = chess::util::ctz64(remainingBlackQueens);
-			importAttacksToMoves(bishopAttacks(squareFrom, this->turn()) | rookAttacks(squareFrom, this->turn()), squareFrom, 0x0);
-			remainingBlackQueens ^= chess::util::bitboardFromIndex(squareFrom);
-		}
-
-		// Find knight moves
-		chess::u64 remainingBlackKnights = this->bitboards[chess::util::constants::boardModifiers::blackKnight];
-		while (remainingBlackKnights) {
-			chess::u8 squareFrom = chess::util::ctz64(remainingBlackKnights);
-			importAttacksToMoves(knightAttacks(squareFrom, this->turn()), squareFrom, 0x0);
-			remainingBlackKnights ^= chess::util::bitboardFromIndex(squareFrom);
-		}
-
         // Find king moves
 		{
-		    chess::u8 squareFrom = chess::util::ctz64(this->bitboards[chess::util::constants::boardModifiers::blackKing]);
-		    importAttacksToMoves(kingAttacks(squareFrom, this->turn()), squareFrom, 0x0);
-			chess::u64 attackBoard = this->attacks(static_cast<chess::util::constants::boardModifiers>(this->turn() ^ 0x08));
+		    chess::u8 squareFrom = chess::util::ctz64(this->bitboards[boardAnnotations::blackKing]);
+		    importAttacksToMoves(kingAttacks(squareFrom, currentTurnColor), squareFrom, 0x0);
+			chess::u64 attackBoard = this->attacks(static_cast<boardAnnotations>(currentTurnColor ^ 0x08));
 			if (this->castleBK()) {
-				if (!(this->occupied() & (chess::util::bitboardFromIndex(chess::util::algebraicToSquare("g8")) | chess::util::bitboardFromIndex(chess::util::algebraicToSquare("f8")))) && 
-                    !(attackBoard & (chess::util::bitboardFromIndex(chess::util::algebraicToSquare("e8")) | chess::util::bitboardFromIndex(chess::util::algebraicToSquare("f8")) | chess::util::bitboardFromIndex(chess::util::algebraicToSquare("g8"))))){
-					pseudoLegalMoves.push_back({squareFrom, chess::util::algebraicToSquare("g8"), static_cast<u16>(0x4000 | (chess::util::constants::boardModifiers::blackKing << 4))});
+				if (!(this->occupied() & (bitboardFromIndex(squareAnnotations::g8) | bitboardFromIndex(squareAnnotations::f8))) && 
+                    !(attackBoard & (bitboardFromIndex(squareAnnotations::e8) | bitboardFromIndex(squareAnnotations::f8) | bitboardFromIndex(squareAnnotations::g8)))){
+					pseudoLegalMoves.append({squareFrom, squareAnnotations::g8, static_cast<u16>(0x4000 | (boardAnnotations::blackKing << 4))});
                 }
 			}
 			if (this->castleBQ()) {
-				if (!(this->occupied() & (chess::util::bitboardFromIndex(chess::util::algebraicToSquare("b8")) | chess::util::bitboardFromIndex(chess::util::algebraicToSquare("c8")) | chess::util::bitboardFromIndex(chess::util::algebraicToSquare("d8")))) &&
-					!(attackBoard & (chess::util::bitboardFromIndex(chess::util::algebraicToSquare("e8")) | chess::util::bitboardFromIndex(chess::util::algebraicToSquare("d8")) | chess::util::bitboardFromIndex(chess::util::algebraicToSquare("c8"))))) {
-					pseudoLegalMoves.push_back({squareFrom, chess::util::algebraicToSquare("c8"), static_cast<u16>(0x5000 | (chess::util::constants::boardModifiers::blackKing << 4))});
+				if (!(this->occupied() & (bitboardFromIndex(squareAnnotations::b8) | bitboardFromIndex(squareAnnotations::c8) | bitboardFromIndex(squareAnnotations::d8))) &&
+					!(attackBoard & (bitboardFromIndex(squareAnnotations::e8) | bitboardFromIndex(squareAnnotations::d8) | bitboardFromIndex(squareAnnotations::c8)))) {
+					pseudoLegalMoves.append({squareFrom, squareAnnotations::c8, static_cast<u16>(0x5000 | (boardAnnotations::blackKing << 4))});
 				}
 			}
 		}
 
 		// Find pawn moves
-		chess::u64 remainingBlackPawns = this->bitboards[chess::util::constants::boardModifiers::blackPawn];
+		chess::u64 remainingBlackPawns = this->bitboards[boardAnnotations::blackPawn];
 		while (remainingBlackPawns) {
 			chess::u8 squareFrom = chess::util::ctz64(remainingBlackPawns);
 			std::array<chess::u64, 2> attackRaw = pawnAttacks(squareFrom);
 			importAttacksToMoves(attackRaw[0] & ~0xFFULL & ~this->enPassantTargetSquare, squareFrom, 0x0);
 			importAttacksToMoves(attackRaw[1] & ~0xFFULL & ~this->enPassantTargetSquare, squareFrom, 0x9000);
 			if (attackRaw[0] & this->enPassantTargetSquare) {
-				pseudoLegalMoves.push_back({squareFrom, chess::util::ctz64(this->enPassantTargetSquare), 0x7000 | (chess::util::constants::blackPawn << 4) | chess::util::constants::whitePawn});
+				pseudoLegalMoves.append({squareFrom, chess::util::ctz64(this->enPassantTargetSquare), 0x7000 | (blackPawn << 4) | whitePawn});
 			}
 			chess::u64 promotionSquares = attackRaw[0] & 0xFFULL;
 			while (promotionSquares) {
 				chess::u8 pieceTo = chess::util::ctz64(promotionSquares);
-				auto pieceCaptured = pieceAtIndex(pieceTo);
+				auto pieceCaptured = this->pieceAtIndex[pieceTo];
 				auto pieceCapturedFlag = chess::util::isPiece(pieceCaptured);
-				pseudoLegalMoves.push_back({squareFrom, pieceTo, static_cast<u16>(pieceCapturedFlag | (chess::util::constants::boardModifiers::blackBishop << 8) | (chess::util::constants::boardModifiers::blackPawn << 4) | pieceCaptured)});
-				pseudoLegalMoves.push_back({squareFrom, pieceTo, static_cast<u16>(pieceCapturedFlag | (chess::util::constants::boardModifiers::blackKnight << 8) | (chess::util::constants::boardModifiers::blackPawn << 4) | pieceCaptured)});
-				pseudoLegalMoves.push_back({squareFrom, pieceTo, static_cast<u16>(pieceCapturedFlag | (chess::util::constants::boardModifiers::blackRook << 8) | (chess::util::constants::boardModifiers::blackPawn << 4) | pieceCaptured)});
-				pseudoLegalMoves.push_back({squareFrom, pieceTo, static_cast<u16>(pieceCapturedFlag | (chess::util::constants::boardModifiers::blackQueen << 8) | (chess::util::constants::boardModifiers::blackPawn << 4) | pieceCaptured)});
+				pseudoLegalMoves.append({squareFrom, pieceTo, static_cast<u16>(pieceCapturedFlag | (boardAnnotations::blackBishop << 8) | (boardAnnotations::blackPawn << 4) | pieceCaptured)});
+				pseudoLegalMoves.append({squareFrom, pieceTo, static_cast<u16>(pieceCapturedFlag | (boardAnnotations::blackKnight << 8) | (boardAnnotations::blackPawn << 4) | pieceCaptured)});
+				pseudoLegalMoves.append({squareFrom, pieceTo, static_cast<u16>(pieceCapturedFlag | (boardAnnotations::blackRook << 8) | (boardAnnotations::blackPawn << 4) | pieceCaptured)});
+				pseudoLegalMoves.append({squareFrom, pieceTo, static_cast<u16>(pieceCapturedFlag | (boardAnnotations::blackQueen << 8) | (boardAnnotations::blackPawn << 4) | pieceCaptured)});
 				promotionSquares ^= chess::util::bitboardFromIndex(pieceTo);
 			}
 
@@ -192,14 +156,11 @@ std::vector<chess::move> chess::position::moves() {
 		}
 
 		// Filter out Illegal moves
-		std::vector<chess::move> legalMoves;
+		moveList legalMoves;
 		for (auto pseudoLegalMove : pseudoLegalMoves) {
-			//std::cout << "testing move " << pseudoLegalMove.toString() << std::endl;
 			chess::position movedBoard = this->move(pseudoLegalMove);
-			chess::u64 attackBoard = movedBoard.attacks(static_cast<chess::util::constants::boardModifiers>(movedBoard.turn()));
-			//std::cout << chess::debugging::convert(attackBoard) << std::flush;
-			if ((attackBoard & movedBoard.bitboards[chess::util::constants::boardModifiers::blackKing]) == 0) {
-				legalMoves.push_back(pseudoLegalMove);
+			if (!movedBoard.squareAttacked(static_cast<squareAnnotations>(ctz64(movedBoard.bitboards[boardAnnotations::blackKing])))) {
+				legalMoves.append(pseudoLegalMove);
 			}
 		}
 		return legalMoves;
@@ -207,21 +168,21 @@ std::vector<chess::move> chess::position::moves() {
 }
 
 // https://www.chessprogramming.org/Classical_Approach
-inline chess::u64 chess::position::bishopAttacks(u8 squareFrom, chess::util::constants::boardModifiers turn) const noexcept {
-	return positiveRayAttacks(squareFrom, chess::util::constants::attackRayDirection::northWest, turn) | positiveRayAttacks(squareFrom, chess::util::constants::attackRayDirection::northEast, turn) | negativeRayAttacks(squareFrom, chess::util::constants::attackRayDirection::southEast, turn) | negativeRayAttacks(squareFrom, chess::util::constants::attackRayDirection::southWest, turn);
+inline chess::u64 chess::position::bishopAttacks(u8 squareFrom, chess::util::constants::boardAnnotations turn) const noexcept {
+	return positiveRayAttacks<chess::util::constants::northWest>(squareFrom, turn) | positiveRayAttacks<chess::util::constants::northEast>(squareFrom, turn) | negativeRayAttacks<chess::util::constants::southWest>(squareFrom, turn) | negativeRayAttacks<chess::util::constants::southEast>(squareFrom, turn);
 }
 
 // https://www.chessprogramming.org/Classical_Approach
-inline chess::u64 chess::position::rookAttacks(u8 squareFrom, chess::util::constants::boardModifiers turn) const noexcept {
-	return positiveRayAttacks(squareFrom, chess::util::constants::attackRayDirection::north, turn) | positiveRayAttacks(squareFrom, chess::util::constants::attackRayDirection::west, turn) | negativeRayAttacks(squareFrom, chess::util::constants::attackRayDirection::south, turn) | negativeRayAttacks(squareFrom, chess::util::constants::attackRayDirection::east, turn);
+inline chess::u64 chess::position::rookAttacks(u8 squareFrom, chess::util::constants::boardAnnotations turn) const noexcept {
+	return positiveRayAttacks<chess::util::constants::north>(squareFrom, turn) | positiveRayAttacks<chess::util::constants::west>(squareFrom, turn) | negativeRayAttacks<chess::util::constants::south>(squareFrom, turn) | negativeRayAttacks<chess::util::constants::east>(squareFrom, turn);
 }
 
-inline chess::u64 chess::position::knightAttacks(u8 squareFrom, chess::util::constants::boardModifiers turn) const noexcept {
-	return chess::util::constants::knightJumps[squareFrom] & (turn ? this->bitboards[chess::util::constants::boardModifiers::black] | ~this->bitboards[chess::util::constants::boardModifiers::white] : this->bitboards[chess::util::constants::boardModifiers::white] | ~this->bitboards[chess::util::constants::boardModifiers::black]);
+inline chess::u64 chess::position::knightAttacks(u8 squareFrom, chess::util::constants::boardAnnotations turn) const noexcept {
+	return chess::util::constants::knightJumps[squareFrom];
 }
 
-inline chess::u64 chess::position::kingAttacks(u8 squareFrom, chess::util::constants::boardModifiers turn) const noexcept {
-	return (chess::util::constants::kingAttacks[squareFrom] & (turn ? ~this->bitboards[chess::util::constants::boardModifiers::white] : ~this->bitboards[chess::util::constants::boardModifiers::black]));
+inline chess::u64 chess::position::kingAttacks(u8 squareFrom, chess::util::constants::boardAnnotations turn) const noexcept {
+	return chess::util::constants::kingAttacks[squareFrom];
 }
 
 inline std::array<chess::u64, 2> chess::position::pawnAttacks(u8 squareFrom) const noexcept {
@@ -229,52 +190,26 @@ inline std::array<chess::u64, 2> chess::position::pawnAttacks(u8 squareFrom) con
 	chess::u64 singlePawnPush = this->turn() ? ((1ULL << squareFrom) << 8) & this->empty() : ((1ULL << squareFrom) >> 8) & this->empty();
 	chess::u64 doublePawnPush = this->turn() ? (singlePawnPush << 8) & this->empty() & 0xFF000000ULL : (singlePawnPush >> 8) & this->empty() & 0xFF00000000ULL;
 	// Pawn capture
-	chess::u64 pawnCapture = this->turn() ? chess::util::constants::pawnAttacks[1][squareFrom] & (this->bitboards[chess::util::constants::boardModifiers::black] | this->enPassantTargetSquare) : chess::util::constants::pawnAttacks[0][squareFrom] & (this->bitboards[chess::util::constants::boardModifiers::white] | this->enPassantTargetSquare);
+	chess::u64 pawnCapture = this->turn() ? chess::util::constants::pawnAttacks[1][squareFrom] & (this->bitboards[chess::util::constants::boardAnnotations::black] | this->enPassantTargetSquare) : chess::util::constants::pawnAttacks[0][squareFrom] & (this->bitboards[chess::util::constants::boardAnnotations::white] | this->enPassantTargetSquare);
 	return {singlePawnPush | pawnCapture, doublePawnPush};
 }
 
-// https://www.chessprogramming.org/Classical_Approach
-chess::u64 chess::position::positiveRayAttacks(u8 squareFrom, util::constants::attackRayDirection direction, chess::util::constants::boardModifiers turn) const noexcept {
-	chess::u64 attacks = chess::util::constants::attackRays[direction][squareFrom];
-	chess::u64 blocker = attacks & this->occupied();
-	if (blocker) {
-		squareFrom = chess::util::ctz64(blocker);
-		attacks ^= chess::util::constants::attackRays[direction][squareFrom];
-		attacks &= turn ? ~this->bitboards[chess::util::constants::boardModifiers::white] : ~this->bitboards[chess::util::constants::boardModifiers::black];
-	}
-	return attacks;
-}
-
-// https://www.chessprogramming.org/Classical_Approach
-chess::u64 chess::position::negativeRayAttacks(u8 squareFrom, util::constants::attackRayDirection direction, chess::util::constants::boardModifiers turn) const noexcept {
-	chess::u64 attacks = chess::util::constants::attackRays[direction][squareFrom];
-	chess::u64 blocker = attacks & this->occupied();
-	if (blocker) {
-		squareFrom = 63U - chess::util::clz64(blocker);
-		attacks ^= chess::util::constants::attackRays[direction][squareFrom];
-		attacks &= turn ? ~this->bitboards[chess::util::constants::boardModifiers::white] : ~this->bitboards[chess::util::constants::boardModifiers::black];
-	}
-	return attacks;
-}
-
-chess::u64 chess::position::attacks(chess::util::constants::boardModifiers turn) {
-	chess::util::constants::boardModifiers pawn = static_cast<chess::util::constants::boardModifiers>(chess::util::constants::boardModifiers::blackPawn | turn);
-	chess::util::constants::boardModifiers knight = static_cast<chess::util::constants::boardModifiers>(chess::util::constants::boardModifiers::blackKnight | turn);
-	chess::util::constants::boardModifiers bishop = static_cast<chess::util::constants::boardModifiers>(chess::util::constants::boardModifiers::blackBishop | turn);
-	chess::util::constants::boardModifiers rook = static_cast<chess::util::constants::boardModifiers>(chess::util::constants::boardModifiers::blackRook | turn);
-	chess::util::constants::boardModifiers queen = static_cast<chess::util::constants::boardModifiers>(chess::util::constants::boardModifiers::blackQueen | turn);
-	chess::util::constants::boardModifiers king = static_cast<chess::util::constants::boardModifiers>(chess::util::constants::boardModifiers::blackKing | turn);
+chess::u64 chess::position::attacks(chess::util::constants::boardAnnotations turn) {
+	chess::util::constants::boardAnnotations pawn = static_cast<chess::util::constants::boardAnnotations>(chess::util::constants::boardAnnotations::blackPawn | turn);
+	chess::util::constants::boardAnnotations knight = static_cast<chess::util::constants::boardAnnotations>(chess::util::constants::boardAnnotations::blackKnight | turn);
+	chess::util::constants::boardAnnotations bishop = static_cast<chess::util::constants::boardAnnotations>(chess::util::constants::boardAnnotations::blackBishop | turn);
+	chess::util::constants::boardAnnotations rook = static_cast<chess::util::constants::boardAnnotations>(chess::util::constants::boardAnnotations::blackRook | turn);
+	chess::util::constants::boardAnnotations queen = static_cast<chess::util::constants::boardAnnotations>(chess::util::constants::boardAnnotations::blackQueen | turn);
+	chess::util::constants::boardAnnotations king = static_cast<chess::util::constants::boardAnnotations>(chess::util::constants::boardAnnotations::blackKing | turn);
 
 	chess::u64 resultAttackBoard = 0;
 	chess::u64 remainingBishops = this->bitboards[bishop] | this->bitboards[queen];
 
 	while (remainingBishops) {
 		chess::u8 squareFrom = chess::util::ctz64(remainingBishops);
-		auto at = bishopAttacks(squareFrom, turn);
-		resultAttackBoard |= at;
+		resultAttackBoard |= bishopAttacks(squareFrom, turn);
 		remainingBishops ^= chess::util::bitboardFromIndex(squareFrom);
 	}
-	//std::cout << "ba:\n" << chess::debugging::convert(resultAttackBoard) << std::endl;
 
 	// Find rook moves
 	chess::u64 remainingRooks = this->bitboards[rook] | this->bitboards[queen];
@@ -283,7 +218,6 @@ chess::u64 chess::position::attacks(chess::util::constants::boardModifiers turn)
 		resultAttackBoard |= rookAttacks(squareFrom, turn);
 		remainingRooks ^= chess::util::bitboardFromIndex(squareFrom);
 	}
-	//std::cout << "ra:\n" << chess::debugging::convert(resultAttackBoard) << std::endl;
 
 	// Find knight moves
 	chess::u64 remainingKnights = this->bitboards[knight];
@@ -292,7 +226,6 @@ chess::u64 chess::position::attacks(chess::util::constants::boardModifiers turn)
 		resultAttackBoard |= knightAttacks(squareFrom, turn);
 		remainingKnights ^= chess::util::bitboardFromIndex(squareFrom);
 	}
-	//std::cout << "ka:\n"<< chess::debugging::convert(resultAttackBoard) << std::endl;
 
 	resultAttackBoard |= chess::util::constants::kingAttacks[chess::util::ctz64(this->bitboards[king])];
 
@@ -304,4 +237,22 @@ chess::u64 chess::position::attacks(chess::util::constants::boardModifiers turn)
 	}
 
 	return resultAttackBoard;
+}
+
+bool chess::position::squareAttacked(chess::util::constants::squareAnnotations square) { // checking white king
+    //Attackers
+    auto turn = this->turn(); // blacks turn
+    auto reverseTurn = static_cast<chess::util::constants::boardAnnotations>(turn ^ 0x08); // white
+	chess::util::constants::boardAnnotations pawn = static_cast<chess::util::constants::boardAnnotations>(chess::util::constants::boardAnnotations::blackPawn | turn); // whites pieces
+	chess::util::constants::boardAnnotations knight = static_cast<chess::util::constants::boardAnnotations>(chess::util::constants::boardAnnotations::blackKnight | turn);
+	chess::util::constants::boardAnnotations bishop = static_cast<chess::util::constants::boardAnnotations>(chess::util::constants::boardAnnotations::blackBishop | turn);
+	chess::util::constants::boardAnnotations rook = static_cast<chess::util::constants::boardAnnotations>(chess::util::constants::boardAnnotations::blackRook | turn);
+	chess::util::constants::boardAnnotations queen = static_cast<chess::util::constants::boardAnnotations>(chess::util::constants::boardAnnotations::blackQueen | turn);
+	chess::util::constants::boardAnnotations king = static_cast<chess::util::constants::boardAnnotations>(chess::util::constants::boardAnnotations::blackKing | turn);
+
+	return (bishopAttacks(square, reverseTurn) & (this->bitboards[bishop] | this->bitboards[queen])) || 
+        (rookAttacks(square, reverseTurn) & (this->bitboards[rook] | this->bitboards[queen])) || 
+        (knightAttacks(square, reverseTurn) & this->bitboards[knight]) || 
+        (chess::util::constants::kingAttacks[square] & this->bitboards[king]) ||
+        ((reverseTurn ? chess::util::constants::pawnAttacks[1][square] : chess::util::constants::pawnAttacks[0][square]) & this->bitboards[pawn]);
 }
