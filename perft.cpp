@@ -6,9 +6,19 @@
 
 #include "include/chess.h"
 
+struct timing{
+    size_t totalRuns;
+    std::time_t totalTime;
+};
+timing movesTime = {0, 0};
+timing moveTime = {0, 0};
+timing undoTime = {0, 0};
+
+#define TIME(line, time) auto time##__startTime = std::chrono::high_resolution_clock::now(); line; time.totalTime += (std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - time##__startTime).count()); time.totalRuns++;
+
 struct perftResult {
 	size_t total;
-	std::vector<std::pair<chess::move, size_t>> moves;
+	std::vector<std::pair<chess::moveData, size_t>> moves;
 	size_t captures;
 	size_t enPassant;
 	size_t castles;
@@ -23,8 +33,8 @@ perftResult perft(size_t testDepth, const chess::position& startingPosition) {
 			return 1;
         }
 		if (depth == 1) {
-			std::vector<chess::move> legalMoves = gameToTest.moves();
-			for (chess::move legalMove : legalMoves) {
+            TIME(auto legalMoves = gameToTest.moves(), movesTime);
+			for (chess::moveData legalMove : legalMoves) {
 				switch(legalMove.flags & 0xFF00){
 					case 0x6000:
 						[[fallthrough]];
@@ -49,11 +59,11 @@ perftResult perft(size_t testDepth, const chess::position& startingPosition) {
 		}
 
 		std::size_t nodes = 0;
-		std::vector<chess::move> validMoves = gameToTest.moves();
-		for (chess::move validMove : validMoves) {
-			gameToTest.move(validMove);
+		TIME(chess::moveList validMoves(gameToTest.moves()), movesTime);
+		for (chess::moveData validMove : validMoves) {
+			TIME(gameToTest.move(validMove), moveTime);
 			nodes += perftTest(perftTest, depth - 1);
-			gameToTest.undo();
+			TIME(gameToTest.undo(), undoTime);
 		}
 		return nodes;
 	};
@@ -74,6 +84,7 @@ struct perftTest {
 
 int main(int argc, const char* argv[]) {
 	// Tests come from https://www.chessprogramming.org/Perft_Results
+    std::cout << sizeof(chess::position) << std::endl;
 	std::vector<perftTest> tests = {
 		{"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", {1, 20, 400, 8902, 197281, 4865609}},
 		{"r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", {1, 48, 2039, 97862, 4085603, 193690690}},
@@ -131,4 +142,7 @@ int main(int argc, const char* argv[]) {
 		}
 	}
 	std::cout << "\u001b[34m[Passed/Total]:[" << passedTests << "/" << totalTests << "]\u001b[0m\n";
+    std::cout << "\u001b[34m[.moves()]:[" << (movesTime.totalTime / movesTime.totalRuns) << "ns/iter]:[" << movesTime.totalRuns << "iters]\u001b[0m\n";
+    std::cout << "\u001b[34m[.move()]:[" << (moveTime.totalTime / moveTime.totalRuns) << "ns/iter]:[" << moveTime.totalRuns << "iters]\u001b[0m\n";
+    std::cout << "\u001b[34m[.undo()]:[" << (undoTime.totalTime / undoTime.totalRuns) << "ns/iter]:[" << undoTime.totalRuns << "iters]\u001b[0m\n";
 }
