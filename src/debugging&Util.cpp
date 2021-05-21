@@ -15,18 +15,13 @@ std::string chess::debugging::bitboardToString(u64 bitBoard) {
 	return result;
 }
 
-std::string chess::util::squareToAlgebraic(chess::u8 square) {
+std::string chess::util::squareToAlgebraic(const chess::squareAnnotations square) {
 	std::string file[] = {"h", "g", "f", "e", "d", "c", "b", "a"};
 	std::string rank[] = {"1", "2", "3", "4", "5", "6", "7", "8"};
 	return file[square % 8] + rank[square / 8];
 }
 
 // Ignoring for the time being, as it is not necessary to either the AI or engine
-bool chess::position::validateFen(std::string fen) {
+[[nodiscard]] bool chess::position::validateFen([[maybe_unused]] const std::string& fen) noexcept {
 	return true;
-}
-
-char chess::util::constants::pieceToChar(chess::util::constants::boardAnnotations piece) {
-	constexpr char conversionList[] = {'*', 'p', 'n', 'b', 'r', 'q', 'k', '*', '*', 'P', 'N', 'B', 'R', 'Q', 'K', '*'};
-	return conversionList[piece];
 }

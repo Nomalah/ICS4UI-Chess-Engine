@@ -25,8 +25,8 @@ struct perftResult {
 	size_t promotions;
 };
 
-perftResult perft(size_t testDepth, const chess::position& startingPosition) {
-	chess::game gameToTest = {{startingPosition}};
+perftResult perft(size_t testDepth, const std::string& fen) {
+	chess::game gameToTest(fen);
 	perftResult result = {0, {}, 0};
 	auto perftTest = [&gameToTest, &result](const auto perftTest, const std::size_t depth) -> std::size_t {
 		if (depth == 0){
@@ -59,7 +59,7 @@ perftResult perft(size_t testDepth, const chess::position& startingPosition) {
 		}
 
 		std::size_t nodes = 0;
-		TIME(chess::moveList validMoves(gameToTest.moves()), movesTime);
+		TIME(chess::staticVector validMoves(gameToTest.moves()), movesTime);
 		for (chess::moveData validMove : validMoves) {
 			TIME(gameToTest.move(validMove), moveTime);
 			nodes += perftTest(perftTest, depth - 1);
@@ -103,7 +103,7 @@ int main(int argc, const char* argv[]) {
 			chess::position testPosition = chess::position::fromFen(fen);
 			std::cout << "\u001b[34m[Test]@Position=" << fen << std::endl;
 			std::cout << "\u001b[33m" << testPosition.ascii() << "\u001b[34m" << std::endl;
-			perftResult testResult = perft(std::stoull(argv[2]), testPosition);
+			perftResult testResult = perft(std::stoull(argv[2]), fen);
 			for (auto& [move, total] : testResult.moves) {
 				std::cout << "\t[" << move.toString() << "]:[" << total << "]\n";
 			}
@@ -122,7 +122,7 @@ int main(int argc, const char* argv[]) {
 		std::cout << "\u001b[34m[Test]@Position=" << test.testFen << std::endl;
 		for (std::size_t testDepth = 1; testDepth < test.perftKnownResults.size(); testDepth++) {
 			auto startTime = std::chrono::high_resolution_clock::now();
-			perftResult testResult = perft(testDepth, testPosition);
+			perftResult testResult = perft(testDepth, test.testFen);
 			auto endTime = std::chrono::high_resolution_clock::now();
 			auto duration = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
 			if (testResult.total != test.perftKnownResults[testDepth]) {
