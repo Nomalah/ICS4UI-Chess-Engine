@@ -129,7 +129,7 @@ def challenge(jsonEvent):
                 return
         else:
             print("Challenge had unsupported time control or variant")
-            declineChallenge = requests.post(dest("/challenge/{}/decline".format(jsonEvent["challenge"]["id"])), headers=apiHeader, body={"reason":"timeControl"})
+            declineChallenge = requests.post(dest("/challenge/{}/decline".format(jsonEvent["challenge"]["id"])), headers=apiHeader, data={"reason":"timeControl"})
         if len(activeChallenges) > 0:
             challenge(activeChallenges.popleft())
     else:
