@@ -12,11 +12,12 @@ supportedTimeControl = ["15+10"]
 supportedVariant = ["Std"]
 apiKey = ""
 apiHeader = {"Authorization": "Bearer " + apiKey}
-accountInfo = requests.get(dest("/account"), headers=apiHeader)
-botId = accountInfo.json()["id"]
 
 def dest(urlShort):
     return "https://lichess.org/api" + urlShort
+
+accountInfo = requests.get(dest("/account"), headers=apiHeader)
+botId = accountInfo.json()["id"]
 
 def fjsonPrint(unformatJson):
     print(json.dumps(unformatJson, indent=4))
@@ -128,7 +129,7 @@ def challenge(jsonEvent):
                 return
         else:
             print("Challenge had unsupported time control or variant")
-        
+            declineChallenge = requests.post(dest("/challenge/{}/decline".format(jsonEvent["challenge"]["id"])), headers=apiHeader, body={"reason":"timeControl"})
         if len(activeChallenges) > 0:
             challenge(activeChallenges.popleft())
     else:
