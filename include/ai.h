@@ -4,7 +4,11 @@
 #include <algorithm>
 
 namespace chess::ai{
+#ifdef AI_MAX_PLY
+constexpr int searchPly = AI_MAX_PLY;
+#else 
 constexpr int searchPly = 5;
+#endif
 constexpr int maxQSearchPly = -20;
 static_assert(searchPly > 1, "Ply Depth Too Small");
 static_assert(searchPly - maxQSearchPly < ((1024 - sizeof(moveData*))/sizeof(moveData)), "Ply Depth Too Large");
@@ -46,16 +50,20 @@ inline bool isACapture(chess::u16 flag){
 }
 
 chess::moveData bestMove(chess::game& gameToTest){
+#ifdef AI_DEBUG
     static size_t totalNodes = 0;
+#endif
+    [[maybe_unused]] size_t nodes = 0;
     struct minimaxOutput {
         int eval;
         chess::moveData reccomendedMove;
     };
-    size_t nodes = 0;
 
     auto alphaBeta = [&gameToTest, &nodes](const auto alphaBeta, int alpha, const int beta, const int ply, const bool capture) -> minimaxOutput {
         if((ply < 1 && !capture) || ply < maxQSearchPly){
-            nodes++;
+#ifdef AI_DEBUG
+		nodes++;
+#endif
             return {evaluate(gameToTest.currentPosition()), {0, 0, 0}};
         }
         auto legalMoves = gameToTest.moves();
@@ -65,17 +73,14 @@ chess::moveData bestMove(chess::game& gameToTest){
                 gameToTest.currentPosition().halfMoveClock >= 50 ? 0 :
                 (gameToTest.currentPosition().turn() ? 
                     (gameToTest.currentPosition().squareAttacked(chess::util::ctz64(gameToTest.currentPosition().bitboards[chess::whiteKing])) ? 
-                        1000000000 
+                        -1000000000 
                         : 0) 
                     : (gameToTest.currentPosition().squareAttacked(chess::util::ctz64(gameToTest.currentPosition().bitboards[chess::blackKing])) ?
-                        -1000000000
+                        1000000000
                         : 0))    
             , {0, 0, 0}};
         }
-        moveData bestMove = {0, 0, 0};
-        std::sort(legalMoves.begin(), legalMoves.end(), [](const moveData a, [[maybe_unused]] const moveData b){
-            return ((a.flags & 0xF000) == 0x1000);
-        });
+        moveData bestMove = {0, 0, 0}; 
         for(auto legalMove : legalMoves){
             gameToTest.move(legalMove);
             int posEval = -alphaBeta(alphaBeta, -beta, -alpha, ply - 1, isACapture(legalMove.flags)).eval;
@@ -91,10 +96,11 @@ chess::moveData bestMove(chess::game& gameToTest){
         return {alpha, bestMove};
     };
     auto result = alphaBeta(alphaBeta, -1000000000, 100000000, searchPly, false);
+#ifdef AI_DEBUG
     std::cout << "Evaluated " << nodes << " nodes, Eval: " << result.eval << " Move:" << result.reccomendedMove.toString() << std::endl;
     totalNodes += nodes;
     std::cout << "Total Nodes Thus Far:" << totalNodes << std::endl;
-
+#endif
     return result.reccomendedMove;
 }
 }

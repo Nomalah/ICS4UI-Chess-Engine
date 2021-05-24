@@ -354,6 +354,7 @@ struct game {
     }
 	[[nodiscard]] inline const position& currentPosition() const noexcept { return gameHistory.back(); }
 	void move (const moveData desiredMove) noexcept;
+	void move (const std::string& uciMove) noexcept;
 	bool undo ()                           noexcept;
 };
 

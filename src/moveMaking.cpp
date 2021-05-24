@@ -1,5 +1,6 @@
-#include <iomanip>
 #include <iostream>
+#include <iomanip>
+#include <utility>
 
 #include "../include/chess.h"
 
@@ -141,6 +142,82 @@ void chess::game::move(const chess::moveData desiredMove) noexcept{
 	}
     result.setZobrist();
 	return result;
+}
+
+void chess::game::move(const std::string& uciMove) noexcept {
+	chess::moveData libraryMove {
+		.originIndex      = chess::util::algebraicToSquare(uciMove.substr(0, 2)),
+		.destinationIndex = chess::util::algebraicToSquare(uciMove.substr(2, 2)),
+		.flags = 0
+	};
+	libraryMove.flags |= this->currentPosition().pieceAtIndex[libraryMove.destinationIndex];
+	libraryMove.flags |= this->currentPosition().pieceAtIndex[libraryMove.originIndex] << 4;
+
+
+	if(uciMove.length() == 5){
+		constexpr std::array<std::pair<char, chess::u8>, 9> charToPiece { {
+			{'*', chess::black      },
+			{'n', chess::blackKnight},
+			{'b', chess::blackBishop},
+			{'r', chess::blackRook  },
+			{'q', chess::blackQueen },
+			{'N', chess::whiteKnight},
+			{'B', chess::whiteBishop},
+			{'R', chess::whiteRook  },
+			{'Q', chess::whiteQueen }
+		} };
+		chess::boardAnnotations promotionPiece { chess::black };
+		for(auto& mapping : charToPiece){
+			if(mapping.first == uciMove[4]){
+				libraryMove.flags |= mapping.second << 8;
+				break;
+			}
+		}
+	}
+
+	// Check for castling
+	switch(libraryMove.movePiece()){
+		case chess::blackKing:
+			if(libraryMove.originIndex == e8){
+				if(libraryMove.destinationIndex == g8){
+					libraryMove.flags |= 0x4000;
+				} else if(libraryMove.destinationIndex == c8){
+					libraryMove.flags |= 0x5000;
+				}
+			}
+			break;
+		case chess::whiteKing:
+			if(libraryMove.originIndex == e1){
+				if(libraryMove.destinationIndex == g1){
+					libraryMove.flags |= 0x2000;
+				} else if(libraryMove.destinationIndex == c1){
+					libraryMove.flags |= 0x3000;
+				}
+			}
+			break;
+		case chess::blackPawn:
+			if(libraryMove.originIndex >= h7 && libraryMove.originIndex <= a7 && libraryMove.destinationIndex >= h5 && libraryMove.destinationIndex <= a5){
+				libraryMove.flags |= 0x9000;
+			} else if(libraryMove.originIndex % 8 != libraryMove.destinationIndex % 8 && !chess::util::isPiece(libraryMove.capturedPiece())){
+				libraryMove.flags |= 0x6000;
+			}
+			break;
+		case chess::whitePawn:
+			if(libraryMove.originIndex >= h2 && libraryMove.originIndex <= a2 && libraryMove.destinationIndex >= h4 && libraryMove.destinationIndex <= a4){
+				libraryMove.flags |= 0x8000;
+			} else if(libraryMove.originIndex % 8 != libraryMove.destinationIndex % 8 && !chess::util::isPiece(libraryMove.capturedPiece())){
+				libraryMove.flags |= 0x7000;
+			}
+			break;
+		default:
+			break;
+	}
+
+	if((libraryMove.flags & 0xF000) == 0){
+		libraryMove.flags |= chess::util::isPiece(libraryMove.capturedPiece());
+	}
+	
+	this->move(libraryMove);
 }
 
 bool chess::game::undo() noexcept{
