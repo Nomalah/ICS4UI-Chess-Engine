@@ -16,8 +16,8 @@ std::string chess::debugging::bitboardToString(u64 bitBoard) {
 }
 
 std::string chess::util::squareToAlgebraic(const chess::squareAnnotations square) {
-	std::string file[] = {"h", "g", "f", "e", "d", "c", "b", "a"};
-	std::string rank[] = {"1", "2", "3", "4", "5", "6", "7", "8"};
+	std::string file[] = { "h", "g", "f", "e", "d", "c", "b", "a" };
+	std::string rank[] = { "1", "2", "3", "4", "5", "6", "7", "8" };
 	return file[square % 8] + rank[square / 8];
 }
 
