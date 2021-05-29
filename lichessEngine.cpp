@@ -10,7 +10,12 @@ int main(int argc, const char* argv[]) {
 	for (int moveNumber = 1; moveNumber < argc; moveNumber++) {
 		chessGame.move(std::string { argv[moveNumber] });
 	}
-	std::string uciMove { chess::ai::bestMove(chessGame).toString() };
+	std::cerr << chessGame.currentPosition().ascii() << '\n';
+	auto botMove { chess::ai::bestMove(chessGame) };
+	chessGame.move(botMove);
+	std::cerr << chessGame.currentPosition().ascii() << '\n';
+
+	std::string uciMove { botMove.toString() };
 	std::cout << (uciMove[4] == '*' ? uciMove.substr(0, 4) : uciMove);
 	return 0;
 }
