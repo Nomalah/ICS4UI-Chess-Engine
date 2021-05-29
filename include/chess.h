@@ -127,9 +127,14 @@ namespace chess {
 			return 0x0ULL;
 		};
 		[[nodiscard]] std::string squareToAlgebraic(const chess::squareAnnotations square);
-		[[nodiscard]] inline constexpr char pieceToChar(const chess::boardAnnotations piece) {
-			constexpr char conversionList[] = { '*', 'p', 'n', 'b', 'r', 'q', 'k', '*', '*', 'P', 'N', 'B', 'R', 'Q', 'K', '*' };
-			return conversionList[piece];
+		[[nodiscard]] inline constexpr char pieceToChar(const chess::boardAnnotations piece, const bool uciFormat) {
+			if (uciFormat) {
+				constexpr char conversionList[] = { '*', 'p', 'n', 'b', 'r', 'q', 'k', '*', '*', 'p', 'n', 'b', 'r', 'q', 'k', '*' };
+				return conversionList[piece];
+			} else {
+				constexpr char conversionList[] = { '*', 'p', 'n', 'b', 'r', 'q', 'k', '*', '*', 'P', 'N', 'B', 'R', 'Q', 'K', '*' };
+				return conversionList[piece];
+			}
 		}
 		[[nodiscard]] inline constexpr u64 bitboardFromIndex(const u8 index) { return 1ULL << index; };
 
@@ -315,7 +320,7 @@ namespace chess {
 		[[nodiscard]] inline constexpr chess::u64 originSquare() const noexcept { return 1ULL << originIndex; }
 		[[nodiscard]] inline constexpr chess::u64 destinationSquare() const noexcept { return 1ULL << destinationIndex; }
 		[[nodiscard]] inline constexpr chess::u16 moveFlags() const noexcept { return flags & 0xFF00; }
-		[[nodiscard]] inline std::string toString() const noexcept { return chess::util::squareToAlgebraic(static_cast<chess::squareAnnotations>(this->originIndex)) + chess::util::squareToAlgebraic(static_cast<chess::squareAnnotations>(this->destinationIndex)) + chess::util::pieceToChar(this->promotionPiece()); }
+		[[nodiscard]] inline std::string toString() const noexcept { return chess::util::squareToAlgebraic(static_cast<chess::squareAnnotations>(this->originIndex)) + chess::util::squareToAlgebraic(static_cast<chess::squareAnnotations>(this->destinationIndex)) + chess::util::pieceToChar(this->promotionPiece(), true); }
 	};
 
 	template <class T = chess::moveData, size_t sz = 1024>
