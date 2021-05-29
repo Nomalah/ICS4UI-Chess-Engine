@@ -66,8 +66,11 @@ namespace chess::ai {
 			auto legalMoves = gameToTest.moves();
 			if (legalMoves.size() == 0) {
 				return {
-					gameToTest.threeFoldRep() ? 0 : gameToTest.currentPosition().halfMoveClock >= 50 ? 0
-																									 : (gameToTest.currentPosition().turn() ? (gameToTest.currentPosition().squareAttacked(chess::util::ctz64(gameToTest.currentPosition().bitboards[chess::whiteKing])) ? -1000000000 : 0) : (gameToTest.currentPosition().squareAttacked(chess::util::ctz64(gameToTest.currentPosition().bitboards[chess::blackKing])) ? 1000000000 : 0)),
+					(gameToTest.threeFoldRep() || gameToTest.currentPosition().halfMoveClock >= 50)
+						? 0
+						: (gameToTest.currentPosition().turn()
+					           ? (gameToTest.currentPosition().squareAttacked(chess::util::ctz64(gameToTest.currentPosition().bitboards[chess::whiteKing])) ? -1000000000 : 0)
+					           : (gameToTest.currentPosition().squareAttacked(chess::util::ctz64(gameToTest.currentPosition().bitboards[chess::blackKing])) ? -1000000000 : 0)),
 					{ 0, 0, 0 }
 				};
 			}
