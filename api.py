@@ -10,12 +10,13 @@ botIsPlayingWhite = None
 botId = None
 supportedTimeControl = ["15+10"]
 supportedVariant = ["Std"]
-apiKey = ""
+apiKey = "D6U94LoVxhC30ot2"
 apiHeader = {"Authorization": "Bearer " + apiKey}
 
 def dest(urlShort):
     return "https://lichess.org/api" + urlShort
 
+print("Getting account info")
 accountInfo = requests.get(dest("/account"), headers=apiHeader)
 botId = accountInfo.json()["id"]
 
@@ -41,15 +42,14 @@ def handleGameState(gameId, gameState):
     if len(listOfMoves) % 2 == 0:
         # white's move
         if botIsPlayingWhite:
-            botMove = getBotMove(listOfMoves)
-        elif len(listOfMoves) >= 2:
-            print("Opponent has moved {}".format(listOfMoves[-2]))
+            if len(listOfMoves) > 1:
+                print("Opponent has moved {}".format(listOfMoves[-1]))
+            botMove = getBotMove(listOfMoves)            
     else:
         # black's move
         if not botIsPlayingWhite:
-            botMove = getBotMove(listOfMoves)
-        elif len(listOfMoves) >= 2:
-            print("Opponent has moved {}".format(listOfMoves[-2]))
+            print("Opponent has moved {}".format(listOfMoves[-1]))
+            botMove = getBotMove(listOfMoves)            
     
     if botMove != None:
         makeMoveResponse = None
