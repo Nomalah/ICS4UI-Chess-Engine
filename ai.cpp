@@ -5,7 +5,7 @@
 #include "include/ai.h"
 
 int main() {
-        // AI self play
+	// AI self play
 	chess::game chessGame = chess::defaultGame();
 	std::vector<chess::moveData> moveHistory;
 	std::string resultStr[] = { "Black Wins!", "Draw!", "White Wins!" };
