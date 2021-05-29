@@ -10,7 +10,7 @@ botIsPlayingWhite = None
 botId = None
 supportedTimeControl = ["15+10"]
 supportedVariant = ["Std"]
-apiKey = "D6U94LoVxhC30ot2"
+apiKey = ""
 apiHeader = {"Authorization": "Bearer " + apiKey}
 
 def dest(urlShort):
