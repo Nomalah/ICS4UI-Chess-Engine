@@ -86,7 +86,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 			result.bitboards[white] &= ~(desiredMove.destinationSquare() << 8);
 			result.bitboards[whitePawn] &= ~(desiredMove.destinationSquare() << 8);
 			result.pieceAtIndex[desiredMove.destinationIndex]     = blackPawn;
-			result.pieceAtIndex[desiredMove.destinationIndex - 8] = whiteNull;
+			result.pieceAtIndex[desiredMove.destinationIndex + 8] = whiteNull;
 			break;
 		case 0x8000:                                                           // White double pawn push
 			result.bitboards[white] |= desiredMove.destinationSquare();        // Colour only
@@ -154,19 +154,14 @@ void chess::game::move(const std::string& uciMove) noexcept {
 	libraryMove.flags |= this->currentPosition().pieceAtIndex[libraryMove.originIndex] << 4;
 
 	if (uciMove.length() == 5) {
-		constexpr std::array<std::pair<char, chess::u8>, 9> charToPiece { { { '*', chess::black },
+		constexpr std::array<std::pair<char, chess::u8>, 5> charToPiece { { { '*', chess::black },
 			                                                                { 'n', chess::blackKnight },
 			                                                                { 'b', chess::blackBishop },
 			                                                                { 'r', chess::blackRook },
-			                                                                { 'q', chess::blackQueen },
-			                                                                { 'N', chess::whiteKnight },
-			                                                                { 'B', chess::whiteBishop },
-			                                                                { 'R', chess::whiteRook },
-			                                                                { 'Q', chess::whiteQueen } } };
-		chess::boardAnnotations promotionPiece { chess::black };
+			                                                                { 'q', chess::blackQueen } } };
 		for (auto& mapping : charToPiece) {
 			if (mapping.first == uciMove[4]) {
-				libraryMove.flags |= mapping.second << 8;
+				libraryMove.flags |= (mapping.second | chess::util::colorOf(libraryMove.movePiece())) << 8;
 				break;
 			}
 		}
@@ -195,15 +190,23 @@ void chess::game::move(const std::string& uciMove) noexcept {
 		case chess::blackPawn:
 			if (libraryMove.originIndex >= h7 && libraryMove.originIndex <= a7 && libraryMove.destinationIndex >= h5 && libraryMove.destinationIndex <= a5) {
 				libraryMove.flags |= 0x9000;
-			} else if (libraryMove.originIndex % 8 != libraryMove.destinationIndex % 8 && !chess::util::isPiece(libraryMove.capturedPiece())) {
-				libraryMove.flags |= 0x6000;
+			} else if (libraryMove.originIndex % 8 != libraryMove.destinationIndex % 8) {
+				if (chess::util::isPiece(libraryMove.capturedPiece()) ^ 0x1000) {
+					libraryMove.flags |= 0x7000;
+					libraryMove.flags &= 0xFFF0;
+					libraryMove.flags |= chess::whitePawn;
+				}
 			}
 			break;
 		case chess::whitePawn:
 			if (libraryMove.originIndex >= h2 && libraryMove.originIndex <= a2 && libraryMove.destinationIndex >= h4 && libraryMove.destinationIndex <= a4) {
 				libraryMove.flags |= 0x8000;
-			} else if (libraryMove.originIndex % 8 != libraryMove.destinationIndex % 8 && !chess::util::isPiece(libraryMove.capturedPiece())) {
-				libraryMove.flags |= 0x7000;
+			} else if (libraryMove.originIndex % 8 != libraryMove.destinationIndex % 8) {
+				if (chess::util::isPiece(libraryMove.capturedPiece()) ^ 0x1000) {
+					libraryMove.flags |= 0x6000;
+					libraryMove.flags &= 0xFFF0;
+					libraryMove.flags |= chess::blackPawn;
+				}
 			}
 			break;
 		default:
