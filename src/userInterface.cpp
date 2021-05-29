@@ -12,7 +12,7 @@
 		result += static_cast<char>(y + 48);
 		result += '|';
 		for (std::size_t x = 8; x > 0; x--, targetSquare >>= 1) {
-			result += chess::util::pieceToChar(this->pieceAtIndex[y * 8 + x - 9]);
+			result += chess::util::pieceToChar(this->pieceAtIndex[y * 8 + x - 9], false);
 		}
 		result += "|\n";
 	}
