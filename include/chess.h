@@ -3,7 +3,6 @@
 #include <array>
 #include <string>
 #include <vector>
-#include <unordered_map>
 #include <algorithm>
 
 namespace chess {
@@ -26,6 +25,14 @@ namespace chess {
 
 	enum boardAnnotations : chess::u8
 	{
+		noColor     = 0x0,
+		pawn        = 0x1,
+		knight      = 0x2,
+		bishop      = 0x3,
+		rook        = 0x4,
+		queen       = 0x5,
+		king        = 0x6,
+		null        = 0x7,
 		black       = 0x0,
 		blackPawn   = 0x1,
 		blackKnight = 0x2,
@@ -129,7 +136,7 @@ namespace chess {
 		[[nodiscard]] std::string squareToAlgebraic(const chess::squareAnnotations square);
 		[[nodiscard]] inline constexpr char pieceToChar(const chess::boardAnnotations piece, const bool uciFormat) {
 			if (uciFormat) {
-				constexpr char conversionList[] = { '*', 'p', 'n', 'b', 'r', 'q', 'k', '*', '*', 'p', 'n', 'b', 'r', 'q', 'k', '*' };
+				constexpr char conversionList[] = { '\0', 'p', 'n', 'b', 'r', 'q', 'k', '\0', '\0', 'p', 'n', 'b', 'r', 'q', 'k', '\0' };
 				return conversionList[piece];
 			} else {
 				constexpr char conversionList[] = { '*', 'p', 'n', 'b', 'r', 'q', 'k', '*', '*', 'P', 'N', 'B', 'R', 'Q', 'K', '*' };
@@ -137,6 +144,9 @@ namespace chess {
 			}
 		}
 		[[nodiscard]] inline constexpr u64 bitboardFromIndex(const u8 index) { return 1ULL << index; };
+		[[nodiscard]] inline constexpr chess::boardAnnotations oppositeTurn(const chess::boardAnnotations piece) noexcept {
+			return static_cast<chess::boardAnnotations>(piece ^ 0x8);
+		}
 
 		namespace constants {
 
@@ -295,18 +305,22 @@ namespace chess {
 #endif
 		}
 
-		// Functions to
-		inline constexpr chess::boardAnnotations colorOf(const chess::boardAnnotations piece) noexcept {
+		// Functions to modify board/piece annotations
+		[[nodiscard]] inline constexpr chess::boardAnnotations colorOf(const chess::boardAnnotations piece) noexcept {
 			return static_cast<chess::boardAnnotations>(piece & 0x08);
 		}
-		inline constexpr chess::boardAnnotations oppositeColorOf(const chess::boardAnnotations piece) noexcept {
+		[[nodiscard]] inline constexpr chess::boardAnnotations oppositeColorOf(const chess::boardAnnotations piece) noexcept {
 			return static_cast<chess::boardAnnotations>(piece ^ 0x08);
 		}
 
-		inline constexpr chess::boardAnnotations nullOf(const chess::boardAnnotations piece) noexcept {
+		[[nodiscard]] inline constexpr chess::boardAnnotations nullOf(const chess::boardAnnotations piece) noexcept {
 			return static_cast<chess::boardAnnotations>(piece | 0x07);
 		}
-		inline constexpr chess::u16 isPiece(chess::boardAnnotations piece) { return (piece & 0x7) == 0x7 ? 0x0000 : 0x1000; };
+		[[nodiscard]] inline constexpr chess::u16 isPiece(chess::boardAnnotations piece) { return (piece & 0x7) == 0x7 ? 0x0000 : 0x1000; };
+
+		[[nodiscard]] inline constexpr chess::boardAnnotations constructPiece(const chess::boardAnnotations piece, const chess::boardAnnotations color) {
+			return static_cast<chess::boardAnnotations>(piece | color);
+		}
 	}    // namespace util
 
 	// More stores the
@@ -355,7 +369,7 @@ namespace chess {
 		[[nodiscard]] staticVector<moveData> moves() const noexcept;
 		[[nodiscard]] position move(moveData desiredMove) const noexcept;
 		[[nodiscard]] chess::u64 attacks(const chess::boardAnnotations turn) const noexcept;
-		[[nodiscard]] bool squareAttacked(const chess::squareAnnotations square) const noexcept;
+		[[nodiscard]] chess::u64 attackers(const chess::squareAnnotations square, const chess::boardAnnotations attackingColor) const noexcept;
 		[[nodiscard]] inline u64 bishopAttacks(const u8 bishopLocation) const noexcept;
 		[[nodiscard]] inline u64 rookAttacks(const u8 rookLocation) const noexcept;
 		[[nodiscard]] inline u64 knightAttacks(const u8 knightLocation) const noexcept;
