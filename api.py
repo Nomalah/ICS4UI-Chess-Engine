@@ -28,8 +28,6 @@ def getBotMove(listOfMoves):
     engineThinking = subprocess.run(["./lichessEngine"] + listOfMoves, stdout=subprocess.PIPE)
     #format engine output
     moveUCI = engineThinking.stdout.decode("utf-8")
-    if len(moveUCI) == 5 and moveUCI[4] == "*":
-        return moveUCI[:4]
     return moveUCI
 
 def handleGameState(gameId, gameState):

@@ -334,7 +334,13 @@ namespace chess {
 		[[nodiscard]] inline constexpr chess::u64 originSquare() const noexcept { return 1ULL << originIndex; }
 		[[nodiscard]] inline constexpr chess::u64 destinationSquare() const noexcept { return 1ULL << destinationIndex; }
 		[[nodiscard]] inline constexpr chess::u16 moveFlags() const noexcept { return flags & 0xFF00; }
-		[[nodiscard]] inline std::string toString() const noexcept { return chess::util::squareToAlgebraic(static_cast<chess::squareAnnotations>(this->originIndex)) + chess::util::squareToAlgebraic(static_cast<chess::squareAnnotations>(this->destinationIndex)) + chess::util::pieceToChar(this->promotionPiece(), true); }
+		[[nodiscard]] inline std::string toString() const noexcept {
+			auto result { chess::util::squareToAlgebraic(static_cast<chess::squareAnnotations>(this->originIndex)) + chess::util::squareToAlgebraic(static_cast<chess::squareAnnotations>(this->destinationIndex)) };
+			if (char promotion { chess::util::pieceToChar(this->promotionPiece(), true) }; promotion == '\0')
+				return result;
+			else
+				return result + promotion;
+		}
 	};
 
 	template <class T = chess::moveData, size_t sz = 1024>

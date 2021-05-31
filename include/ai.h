@@ -69,8 +69,8 @@ namespace chess::ai {
 					(gameToTest.threeFoldRep() || gameToTest.currentPosition().halfMoveClock >= 50)
 						? 0
 						: (gameToTest.currentPosition().turn()
-					           ? (gameToTest.currentPosition().squareAttacked(chess::util::ctz64(gameToTest.currentPosition().bitboards[chess::whiteKing])) ? -1000000000 : 0)
-					           : (gameToTest.currentPosition().squareAttacked(chess::util::ctz64(gameToTest.currentPosition().bitboards[chess::blackKing])) ? -1000000000 : 0)),
+					           ? (gameToTest.currentPosition().attackers(chess::util::ctz64(gameToTest.currentPosition().bitboards[chess::whiteKing]), black) ? -1000000000 : 0)
+					           : (gameToTest.currentPosition().attackers(chess::util::ctz64(gameToTest.currentPosition().bitboards[chess::blackKing]), white) ? -1000000000 : 0)),
 					{ 0, 0, 0 }
 				};
 			}
