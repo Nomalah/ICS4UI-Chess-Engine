@@ -1,24 +1,19 @@
 #include <array>
-#include <iostream>
-#include <regex>
 #include <sstream>
 #include <string>
 
 #include "../include/chess.h"
 
-std::string chess::position::ascii() {
-	std::string result = " +--------+\n";
-	result.reserve(132);  // Size of final string
+[[nodiscard]] std::string chess::position::ascii() const noexcept {
+	std::string result { " +--------+\n" };
+	result.reserve(132);    // Size of final string
 
-	chess::u64 targetSquare = chess::util::iter;
-	for (std::size_t y = 8; y > 0; y--) {
-		result += (char)(y + 48);
-		result += "|";
-		for (std::size_t x = 8; x > 0; x--) {
-			result += chess::util::constants::pieceToChar(this->pieceAtIndex[y * 8 + x - 9]);
-			targetSquare >>= 1;
+	for (chess::u64 targetSquare { chess::util::constants::bitboardIter }, y { 8 }; y > 0; y--) {
+		result += static_cast<char>(y + 48);
+		result += '|';
+		for (std::size_t x = 8; x > 0; x--, targetSquare >>= 1) {
+			result += chess::util::pieceToChar(this->pieceAtIndex[y * 8 + x - 9], false);
 		}
-
 		result += "|\n";
 	}
 
@@ -26,89 +21,92 @@ std::string chess::position::ascii() {
 	return result;
 }
 
-chess::position chess::position::fromFen(std::string fen) {
+[[nodiscard]] chess::position chess::position::fromFen(const std::string& fen) noexcept {
+	using namespace chess::util::constants;
 	if (chess::position::validateFen(fen)) {
 		// Empty position with a valid flag enabled
-		chess::position result = {{}, {}, 0x04, 0, 0};
-		std::stringstream toTokenize(fen);
-		std::string output;
+		chess::position result {
+			.bitboards             = {},
+			.pieceAtIndex          = {},
+			.flags                 = 0x04,
+			.halfMoveClock         = 0,
+			.enPassantTargetSquare = 0,
+			.zobristHash           = 0
+		};
+		std::stringstream toTokenize { fen };
 		std::array<std::string, 6> tokens;
-		auto iter = tokens.begin();
-		while (std::getline(toTokenize, output, ' ')) {
-			*iter++ = output;
+		for (auto& token : tokens) {
+			std::getline(toTokenize, token, ' ');
 		}
 
 		// Fill board with fen pieces
 		u8 insertIndex = 63;
-		for (char piece : tokens[0]) {
-			u64 insertAtSquare = chess::util::bitboardFromIndex(insertIndex);
-			//std::cout << chess::debugging::bitboardToString(insertAtSquare) << std::endl;
+		for (const char piece : tokens[0]) {
 			if (piece > '0' && piece <= '9') {
-                for(std::size_t _ = 0; _ < piece - '0'; _++, insertIndex--){
-					result.pieceAtIndex[insertIndex] = chess::util::constants::boardAnnotations::whiteNull;
+				for (char _ = 0; _ < piece - '0'; _++, insertIndex--) {
+					result.pieceAtIndex[insertIndex] = boardAnnotations::whiteNull;
 				}
-			}
-			else if (piece != '/') {
-				switch (piece) {
+			} else if (piece != '/') {
+				switch (u64 insertAtSquare = chess::util::bitboardFromIndex(insertIndex); piece) {
 					case 'p':
-						result.pieceAtIndex[insertIndex] = chess::util::constants::boardAnnotations::blackPawn;
-						result.bitboards[chess::util::constants::boardAnnotations::black] |= insertAtSquare;
-						result.bitboards[chess::util::constants::boardAnnotations::blackPawn] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = boardAnnotations::blackPawn;
+						result.bitboards[boardAnnotations::black] |= insertAtSquare;
+						result.bitboards[boardAnnotations::blackPawn] |= insertAtSquare;
 						break;
 					case 'P':
-						result.pieceAtIndex[insertIndex] = chess::util::constants::boardAnnotations::whitePawn;
-						result.bitboards[chess::util::constants::boardAnnotations::white] |= insertAtSquare;
-						result.bitboards[chess::util::constants::boardAnnotations::whitePawn] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = boardAnnotations::whitePawn;
+						result.bitboards[boardAnnotations::white] |= insertAtSquare;
+						result.bitboards[boardAnnotations::whitePawn] |= insertAtSquare;
 						break;
 					case 'n':
-						result.pieceAtIndex[insertIndex] = chess::util::constants::boardAnnotations::blackKnight;
-						result.bitboards[chess::util::constants::boardAnnotations::black] |= insertAtSquare;
-						result.bitboards[chess::util::constants::boardAnnotations::blackKnight] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = boardAnnotations::blackKnight;
+						result.bitboards[boardAnnotations::black] |= insertAtSquare;
+						result.bitboards[boardAnnotations::blackKnight] |= insertAtSquare;
 						break;
 					case 'N':
-						result.pieceAtIndex[insertIndex] = chess::util::constants::boardAnnotations::whiteKnight;
-						result.bitboards[chess::util::constants::boardAnnotations::white] |= insertAtSquare;
-						result.bitboards[chess::util::constants::boardAnnotations::whiteKnight] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = boardAnnotations::whiteKnight;
+						result.bitboards[boardAnnotations::white] |= insertAtSquare;
+						result.bitboards[boardAnnotations::whiteKnight] |= insertAtSquare;
 						break;
 					case 'b':
-						result.pieceAtIndex[insertIndex] = chess::util::constants::boardAnnotations::blackBishop;
-						result.bitboards[chess::util::constants::boardAnnotations::black] |= insertAtSquare;
-						result.bitboards[chess::util::constants::boardAnnotations::blackBishop] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = boardAnnotations::blackBishop;
+						result.bitboards[boardAnnotations::black] |= insertAtSquare;
+						result.bitboards[boardAnnotations::blackBishop] |= insertAtSquare;
 						break;
 					case 'B':
-						result.pieceAtIndex[insertIndex] = chess::util::constants::boardAnnotations::whiteBishop;
-						result.bitboards[chess::util::constants::boardAnnotations::white] |= insertAtSquare;
-						result.bitboards[chess::util::constants::boardAnnotations::whiteBishop] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = boardAnnotations::whiteBishop;
+						result.bitboards[boardAnnotations::white] |= insertAtSquare;
+						result.bitboards[boardAnnotations::whiteBishop] |= insertAtSquare;
 						break;
 					case 'r':
-						result.pieceAtIndex[insertIndex] = chess::util::constants::boardAnnotations::blackRook;
-						result.bitboards[chess::util::constants::boardAnnotations::black] |= insertAtSquare;
-						result.bitboards[chess::util::constants::boardAnnotations::blackRook] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = boardAnnotations::blackRook;
+						result.bitboards[boardAnnotations::black] |= insertAtSquare;
+						result.bitboards[boardAnnotations::blackRook] |= insertAtSquare;
 						break;
 					case 'R':
-						result.pieceAtIndex[insertIndex] = chess::util::constants::boardAnnotations::whiteRook;
-						result.bitboards[chess::util::constants::boardAnnotations::white] |= insertAtSquare;
-						result.bitboards[chess::util::constants::boardAnnotations::whiteRook] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = boardAnnotations::whiteRook;
+						result.bitboards[boardAnnotations::white] |= insertAtSquare;
+						result.bitboards[boardAnnotations::whiteRook] |= insertAtSquare;
 						break;
 					case 'q':
-						result.pieceAtIndex[insertIndex] = chess::util::constants::boardAnnotations::blackQueen;
-						result.bitboards[chess::util::constants::boardAnnotations::black] |= insertAtSquare;
-						result.bitboards[chess::util::constants::boardAnnotations::blackQueen] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = boardAnnotations::blackQueen;
+						result.bitboards[boardAnnotations::black] |= insertAtSquare;
+						result.bitboards[boardAnnotations::blackQueen] |= insertAtSquare;
 						break;
 					case 'Q':
-						result.pieceAtIndex[insertIndex] = chess::util::constants::boardAnnotations::whiteQueen;
-						result.bitboards[chess::util::constants::boardAnnotations::white] |= insertAtSquare;
-						result.bitboards[chess::util::constants::boardAnnotations::whiteQueen] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = boardAnnotations::whiteQueen;
+						result.bitboards[boardAnnotations::white] |= insertAtSquare;
+						result.bitboards[boardAnnotations::whiteQueen] |= insertAtSquare;
 						break;
 					case 'k':
-						result.pieceAtIndex[insertIndex] = chess::util::constants::boardAnnotations::blackKing;
-						result.bitboards[chess::util::constants::boardAnnotations::black] |= insertAtSquare;
-						result.bitboards[chess::util::constants::boardAnnotations::blackKing] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = boardAnnotations::blackKing;
+						result.bitboards[boardAnnotations::black] |= insertAtSquare;
+						result.bitboards[boardAnnotations::blackKing] |= insertAtSquare;
 						break;
 					case 'K':
-						result.pieceAtIndex[insertIndex] = chess::util::constants::boardAnnotations::whiteKing;
-						result.bitboards[chess::util::constants::boardAnnotations::white] |= insertAtSquare;
-						result.bitboards[chess::util::constants::boardAnnotations::whiteKing] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = boardAnnotations::whiteKing;
+						result.bitboards[boardAnnotations::white] |= insertAtSquare;
+						result.bitboards[boardAnnotations::whiteKing] |= insertAtSquare;
 						break;
 				}
 				insertIndex -= 1;
@@ -116,7 +114,7 @@ chess::position chess::position::fromFen(std::string fen) {
 		}
 
 		// Set turn flag
-		result.flags |= tokens[1] == "w" ? 0x08 : 0x00;
+		result.flags |= tokens[1] == "w" ? boardAnnotations::white : boardAnnotations::black;
 
 		// Set castling flags
 		for (char flag : tokens[2]) {
@@ -140,23 +138,23 @@ chess::position chess::position::fromFen(std::string fen) {
 		result.enPassantTargetSquare = chess::util::bitboardFromIndex(chess::util::algebraicToSquare(tokens[3]));
 
 		// Set halfmove clock
-		result.halfMoveClock = std::stoul(tokens[4]);
+		result.halfMoveClock = static_cast<chess::u8>(std::stoul(tokens[4]));
 
 		// Set fullmove number
 		// (Unused and not implimented)
+
+		// Set the zobrist hash of the position
+		result.setZobrist();
 		return result;
 	} else {
 		// Empty position with valid flag not set
-		return {{}, {}, 0, 0, 0};
+		return {
+			.bitboards             = {},
+			.pieceAtIndex          = {},
+			.flags                 = 0,
+			.halfMoveClock         = 0,
+			.enPassantTargetSquare = 0,
+			.zobristHash           = 0
+		};
 	}
-}
-
-bool chess::game::finished() {
-	return false;
-}
-
-chess::game chess::defaultGame() {
-	std::vector<position> gameHistory;
-	gameHistory.push_back(position::fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"));
-	return {gameHistory};
 }
