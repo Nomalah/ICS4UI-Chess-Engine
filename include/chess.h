@@ -321,6 +321,22 @@ namespace chess {
 		[[nodiscard]] inline constexpr chess::boardAnnotations constructPiece(const chess::boardAnnotations piece, const chess::boardAnnotations color) {
 			return static_cast<chess::boardAnnotations>(piece | color);
 		}
+
+		template <chess::attackRayDirection direction>
+		[[nodiscard]] inline constexpr chess::u64 positiveRayAttacks(const chess::u8 squareFrom, const chess::u64 occupiedSquares) noexcept {
+			chess::u64 attacks { chess::util::constants::attackRays[direction][squareFrom] };
+			chess::u64 blocker { (attacks & occupiedSquares) | 0x8000000000000000 };
+			attacks ^= chess::util::constants::attackRays[direction][chess::util::ctz64(blocker)];
+			return attacks;
+		}
+
+		template <chess::attackRayDirection direction>
+		[[nodiscard]] inline constexpr chess::u64 negativeRayAttacks(const chess::u8 squareFrom, const chess::u64 occupiedSquares) noexcept {
+			chess::u64 attacks { chess::util::constants::attackRays[direction][squareFrom] };
+			chess::u64 blocker { (attacks & occupiedSquares) | 0x1 };
+			attacks ^= chess::util::constants::attackRays[direction][63U - chess::util::clz64(blocker)];
+			return attacks;
+		}
 	}    // namespace util
 
 	// More stores the
@@ -376,26 +392,38 @@ namespace chess {
 		[[nodiscard]] position move(moveData desiredMove) const noexcept;
 		[[nodiscard]] chess::u64 attacks(const chess::boardAnnotations turn) const noexcept;
 		[[nodiscard]] chess::u64 attackers(const chess::squareAnnotations square, const chess::boardAnnotations attackingColor) const noexcept;
-		[[nodiscard]] inline u64 bishopAttacks(const u8 bishopLocation) const noexcept;
-		[[nodiscard]] inline u64 rookAttacks(const u8 rookLocation) const noexcept;
-		[[nodiscard]] inline u64 knightAttacks(const u8 knightLocation) const noexcept;
-		[[nodiscard]] inline u64 kingAttacks(const u8 kingLocation) const noexcept;
-		[[nodiscard]] inline std::array<u64, 2> pawnAttacks(const u8 squareFrom) const noexcept;
-
-		template <chess::attackRayDirection direction>
-		[[nodiscard]] inline constexpr chess::u64 positiveRayAttacks(const u8 squareFrom) const noexcept {
-			chess::u64 attacks { chess::util::constants::attackRays[direction][squareFrom] };
-			chess::u64 blocker { (attacks & this->occupied()) | 0x8000000000000000 };
-			attacks ^= chess::util::constants::attackRays[direction][chess::util::ctz64(blocker)];
-			return attacks;
+		template <chess::boardAnnotations piece, class returnType>
+		[[nodiscard]] inline returnType pieceMoves(const u8 squareFrom) const noexcept { return returnType {}; };
+		template <>
+		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::bishop>(const chess::u8 squareFrom) const noexcept {
+			const auto occupied { this->occupied() };
+			return chess::util::positiveRayAttacks<chess::northWest>(squareFrom, occupied) | chess::util::positiveRayAttacks<chess::northEast>(squareFrom, occupied) | chess::util::negativeRayAttacks<chess::southWest>(squareFrom, occupied) | chess::util::negativeRayAttacks<chess::southEast>(squareFrom, occupied);
 		}
-
-		template <chess::attackRayDirection direction>
-		[[nodiscard]] inline constexpr chess::u64 negativeRayAttacks(const u8 squareFrom) const noexcept {
-			chess::u64 attacks { chess::util::constants::attackRays[direction][squareFrom] };
-			chess::u64 blocker { (attacks & this->occupied()) | 0x1 };
-			attacks ^= chess::util::constants::attackRays[direction][63U - chess::util::clz64(blocker)];
-			return attacks;
+		template <>
+		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::rook>(const chess::u8 squareFrom) const noexcept {
+			const auto occupied { this->occupied() };
+			return chess::util::positiveRayAttacks<chess::north>(squareFrom, occupied) | chess::util::positiveRayAttacks<chess::west>(squareFrom, occupied) | chess::util::negativeRayAttacks<chess::south>(squareFrom, occupied) | chess::util::negativeRayAttacks<chess::east>(squareFrom, occupied);
+		}
+		template <>
+		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::knight>(const chess::u8 squareFrom) const noexcept {
+			return chess::util::constants::knightJumps[squareFrom];
+		}
+		template <>
+		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::queen>(const chess::u8 squareFrom) const noexcept {
+			return this->pieceMoves<chess::boardAnnotations::rook, chess::u64>(squareFrom) | this->pieceMoves<chess::boardAnnotations::bishop, chess::u64>(squareFrom);
+		}
+		template <>
+		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::king>(const chess::u8 squareFrom) const noexcept {
+			return chess::util::constants::kingAttacks[squareFrom];
+		}
+		template <>
+		[[nodiscard]] inline std::array<chess::u64, 3> pieceMoves<chess::boardAnnotations::pawn>(const chess::u8 squareFrom) const noexcept {
+			// Pawn push
+			chess::u64 singlePawnPush = this->turn() ? ((1ULL << squareFrom) << 8) & this->empty() : ((1ULL << squareFrom) >> 8) & this->empty();
+			chess::u64 doublePawnPush = this->turn() ? (singlePawnPush << 8) & this->empty() & 0xFF000000ULL : (singlePawnPush >> 8) & this->empty() & 0xFF00000000ULL;
+			// Pawn capture
+			chess::u64 pawnCapture = this->turn() ? chess::util::constants::pawnAttacks[1][squareFrom] & (this->bitboards[chess::boardAnnotations::black] | this->enPassantTargetSquare) : chess::util::constants::pawnAttacks[0][squareFrom] & (this->bitboards[chess::boardAnnotations::white] | this->enPassantTargetSquare);
+			return { singlePawnPush, doublePawnPush, pawnCapture };
 		}
 
 		[[nodiscard]] std::string ascii() const noexcept;
