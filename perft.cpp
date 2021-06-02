@@ -29,6 +29,7 @@ struct perftResult {
 	size_t promotions;
 };
 
+template <bool individualTest>
 perftResult perft(size_t testDepth, const std::string& fen) {
 	chess::game gameToTest(fen);
 	perftResult result = { 0, {}, 0 };
@@ -63,11 +64,16 @@ perftResult perft(size_t testDepth, const std::string& fen) {
         }
 
         std::size_t nodes = 0;
-        TIME(chess::staticVector validMoves(gameToTest.moves()), movesTime);
+        TIME(chess::staticVector validMoves { gameToTest.moves() }, movesTime);
         for (chess::moveData validMove : validMoves) {
             TIME(gameToTest.move(validMove), moveTime);
             nodes += perftTest(perftTest, depth - 1);
             TIME(gameToTest.undo(), undoTime);
+        }
+        if (individualTest) {
+            if ((nodes & 255) == 255) {
+                std::cout << "\u001b[34m[.moves()]:[" << (movesTime.totalTime / movesTime.totalRuns) << "ns/iter]:[" << movesTime.totalRuns << "iters]\u001b[0m\r";
+            }
         }
         return nodes;
 	};
@@ -132,7 +138,8 @@ int main(int argc, const char* argv[]) {
 			chess::position testPosition = chess::position::fromFen(fen);
 			std::cout << "\u001b[34m[Test]@Position=" << fen << std::endl;
 			std::cout << "\u001b[33m" << testPosition.ascii() << "\u001b[34m" << std::endl;
-			perftResult testResult = perft(std::stoull(argv[2]), fen);
+			perftResult testResult = perft<true>(std::stoull(argv[2]), fen);
+			std::cout << '\n';
 			for (auto& [move, total] : testResult.moves) {
 				std::cout << "\t[" << move.toString() << "]:[" << total << "]\n";
 			}
@@ -151,7 +158,7 @@ int main(int argc, const char* argv[]) {
 		std::cout << "\u001b[34m[Test]@Position=" << test.testFen << std::endl;
 		for (const perftTestResult& knownTestResult : test.testList) {
 			auto startTime         = std::chrono::high_resolution_clock::now();
-			perftResult testResult = perft(knownTestResult.depth, test.testFen);
+			perftResult testResult = perft<false>(knownTestResult.depth, test.testFen);
 			auto endTime           = std::chrono::high_resolution_clock::now();
 			auto duration          = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
 			if (testResult.total != knownTestResult.nodes) {
