@@ -322,6 +322,7 @@ namespace chess {
 		[[nodiscard]] inline T* begin() noexcept { return moves.data(); }
 		[[nodiscard]] inline T* end() noexcept { return insertLocation; }
 		[[nodiscard]] inline chess::u64 size() const noexcept { return static_cast<chess::u64>(insertLocation - moves.data()); }
+        [[nodiscard]] inline constexpr size_t capacity() const noexcept { return sz; }
 	};
 
 	struct position {

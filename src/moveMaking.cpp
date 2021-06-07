@@ -1,6 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include <utility>
+#include <cassert>
 
 #include "../include/chess.h"
 

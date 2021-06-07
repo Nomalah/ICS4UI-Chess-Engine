@@ -4,7 +4,7 @@
 
 [[nodiscard]] chess::staticVector<chess::moveData> chess::game::moves() const noexcept {
 	if (this->threeFoldRep() || this->currentPosition().halfMoveClock >= 50) {
-		return staticVector<chess::moveData>();
+		return staticVector<chess::moveData>{};
 	}
 	// Continue with normal move generation
 	return this->currentPosition().moves();
