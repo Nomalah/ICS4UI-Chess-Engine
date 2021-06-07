@@ -304,6 +304,9 @@ namespace chess {
 				return result + promotion;
 		}
 	};
+    [[nodiscard]] inline constexpr bool operator==(const moveData lhs, const moveData rhs){
+		return lhs.originIndex == rhs.originIndex && lhs.destinationIndex == rhs.destinationIndex && lhs.flags == rhs.flags;
+	};
 
 	template <class T = chess::moveData, size_t sz = 1024>
 	class staticVector {
