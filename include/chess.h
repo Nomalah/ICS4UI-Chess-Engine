@@ -323,8 +323,8 @@ namespace chess {
 		[[nodiscard]] position move(moveData desiredMove) const noexcept;
 		[[nodiscard]] chess::u64 attacks(const chess::boardAnnotations turn) const noexcept;
 		[[nodiscard]] chess::u64 attackers(const chess::squareAnnotations square, const chess::boardAnnotations attackingColor) const noexcept;
-		template <chess::boardAnnotations piece, class returnType>
-		[[nodiscard]] inline returnType pieceMoves(const u8 squareFrom) const noexcept { return returnType {}; };
+		template <chess::boardAnnotations piece>
+		[[nodiscard]] inline chess::u64 pieceMoves(const u8 squareFrom) const noexcept { return chess::u64 {}; };
 		template <>
 		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::bishop>(const chess::u8 squareFrom) const noexcept {
 			const auto occupied { this->occupied() };
@@ -341,7 +341,7 @@ namespace chess {
 		}
 		template <>
 		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::queen>(const chess::u8 squareFrom) const noexcept {
-			return this->pieceMoves<chess::boardAnnotations::rook, chess::u64>(squareFrom) | this->pieceMoves<chess::boardAnnotations::bishop, chess::u64>(squareFrom);
+			return this->pieceMoves<chess::boardAnnotations::rook>(squareFrom) | this->pieceMoves<chess::boardAnnotations::bishop>(squareFrom);
 		}
 		template <>
 		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::king>(const chess::u8 squareFrom) const noexcept {

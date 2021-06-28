@@ -41,7 +41,7 @@
 		u64 allyPieces { this->bitboards[piece] & ~pinnedPieces };    // Pieces that are not pinned
 		while (allyPieces) {
 			const u8 currentAllyPieceIndex { ctz64(allyPieces) };
-			u64 allyPieceMoves { this->pieceMoves<typeOfPieceToFindMoves, u64>(currentAllyPieceIndex) & notAlly & mask };
+			u64 allyPieceMoves { this->pieceMoves<typeOfPieceToFindMoves>(currentAllyPieceIndex) & notAlly & mask };
 			while (allyPieceMoves) {
 				const auto destinationSquare { ctz64(allyPieceMoves) };
 				const auto destinationPiece { this->pieceAtIndex[destinationSquare] };
@@ -288,14 +288,14 @@
 		u64 blockMask { 0 };
 		const auto opponentAttackerLocation { ctz64(attackersOfAllyKing) };
 		if (attackersOfAllyKing & this->bitboards[opponentBishop]) {
-			blockMask = this->pieceMoves<bishop, u64>(opponentAttackerLocation) & this->pieceMoves<bishop, u64>(allyKingLocation);
+			blockMask = this->pieceMoves<bishop>(opponentAttackerLocation) & this->pieceMoves<bishop>(allyKingLocation);
 		} else if (attackersOfAllyKing & this->bitboards[opponentRook]) {
-			blockMask = this->pieceMoves<rook, u64>(opponentAttackerLocation) & this->pieceMoves<rook, u64>(allyKingLocation);
+			blockMask = this->pieceMoves<rook>(opponentAttackerLocation) & this->pieceMoves<rook>(allyKingLocation);
 		} else if (attackersOfAllyKing & this->bitboards[opponentQueen]) {
-			if (auto rookAttackFromKing { this->pieceMoves<rook, u64>(allyKingLocation) }; rookAttackFromKing & this->bitboards[opponentQueen]) {    // The check is along a file or rank
-				blockMask = this->pieceMoves<rook, u64>(opponentAttackerLocation) & rookAttackFromKing;
+			if (auto rookAttackFromKing { this->pieceMoves<rook>(allyKingLocation) }; rookAttackFromKing & this->bitboards[opponentQueen]) {    // The check is along a file or rank
+				blockMask = this->pieceMoves<rook>(opponentAttackerLocation) & rookAttackFromKing;
 			} else {    // The check is along a diagonal
-				blockMask = this->pieceMoves<bishop, u64>(opponentAttackerLocation) & this->pieceMoves<bishop, u64>(allyKingLocation);
+				blockMask = this->pieceMoves<bishop>(opponentAttackerLocation) & this->pieceMoves<bishop>(allyKingLocation);
 			}
 		}
 
@@ -447,7 +447,7 @@
 	// Find knight moves
 	for (chess::u64 remainingKnights { this->bitboards[attackingKnight] }; remainingKnights;) {
 		const chess::u8 squareFrom { chess::util::ctz64(remainingKnights) };
-		resultAttackBoard |= this->pieceMoves<knight, u64>(squareFrom);
+		resultAttackBoard |= this->pieceMoves<knight>(squareFrom);
 		remainingKnights ^= chess::util::bitboardFromIndex(squareFrom);
 	}
 
@@ -469,8 +469,8 @@
 	const chess::boardAnnotations attackingBishop { chess::util::constructPiece(chess::boardAnnotations::bishop, colorAttacking) };
 	const chess::boardAnnotations attackingRook { chess::util::constructPiece(chess::boardAnnotations::rook, colorAttacking) };
 	const chess::boardAnnotations attackingQueen { chess::util::constructPiece(chess::boardAnnotations::queen, colorAttacking) };
-	return (this->pieceMoves<bishop, u64>(square) & (this->bitboards[attackingBishop] | this->bitboards[attackingQueen])) |
-	       (this->pieceMoves<rook, u64>(square) & (this->bitboards[attackingRook] | this->bitboards[attackingQueen])) |
-	       (this->pieceMoves<knight, u64>(square) & this->bitboards[attackingKnight]) |
+	return (this->pieceMoves<bishop>(square) & (this->bitboards[attackingBishop] | this->bitboards[attackingQueen])) |
+	       (this->pieceMoves<rook>(square) & (this->bitboards[attackingRook] | this->bitboards[attackingQueen])) |
+	       (this->pieceMoves<knight>(square) & this->bitboards[attackingKnight]) |
 	       ((colorAttacking ? chess::util::constants::pawnAttacks[0][square] : chess::util::constants::pawnAttacks[1][square]) & this->bitboards[attackingPawn]);
 }
