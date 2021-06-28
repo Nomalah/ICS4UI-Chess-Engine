@@ -154,7 +154,6 @@ int main(int argc, const char* argv[]) {
 	size_t passedTests = 0;
 
 	for (const perftTest& test : tests) {
-		chess::position testPosition = chess::position::fromFen(test.testFen);
 		std::cout << "\u001b[34m[Test]@Position=" << test.testFen << std::endl;
 		for (const perftTestResult& knownTestResult : test.testList) {
 			auto startTime         = std::chrono::high_resolution_clock::now();
