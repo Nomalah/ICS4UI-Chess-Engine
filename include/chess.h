@@ -366,15 +366,6 @@ namespace chess {
 		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::king>(const chess::u8 squareFrom) const noexcept {
 			return chess::util::constants::kingAttacks[squareFrom];
 		}
-		template <>
-		[[nodiscard]] inline std::array<chess::u64, 3> pieceMoves<chess::boardAnnotations::pawn>(const chess::u8 squareFrom) const noexcept {
-			// Pawn push
-			chess::u64 singlePawnPush = this->turn() ? ((1ULL << squareFrom) << 8) & this->empty() : ((1ULL << squareFrom) >> 8) & this->empty();
-			chess::u64 doublePawnPush = this->turn() ? (singlePawnPush << 8) & this->empty() & 0xFF000000ULL : (singlePawnPush >> 8) & this->empty() & 0xFF00000000ULL;
-			// Pawn capture
-			chess::u64 pawnCapture = this->turn() ? chess::util::constants::pawnAttacks[1][squareFrom] & (this->bitboards[chess::boardAnnotations::black] | this->enPassantTargetSquare) : chess::util::constants::pawnAttacks[0][squareFrom] & (this->bitboards[chess::boardAnnotations::white] | this->enPassantTargetSquare);
-			return { singlePawnPush, doublePawnPush, pawnCapture };
-		}
 
 		[[nodiscard]] std::string ascii() const noexcept;
 		[[nodiscard]] inline constexpr chess::boardAnnotations turn() const noexcept { return static_cast<chess::boardAnnotations>(flags & 0x08); }    // 0 - 1 (1 bit)
