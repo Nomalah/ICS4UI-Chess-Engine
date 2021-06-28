@@ -66,7 +66,7 @@ namespace chess {
 	};
 
 	namespace util {
-		[[nodiscard]] inline constexpr u8 algebraicToSquare(const std::string& algebraic) noexcept {
+		[[nodiscard]] constexpr u8 algebraicToSquare(const std::string& algebraic) noexcept {
 			if (algebraic.length() == 2) {
 				u8 total { 0 };
 				if (algebraic[0] >= 'a' && algebraic[0] <= 'h') {
@@ -80,7 +80,7 @@ namespace chess {
 			return 0x0ULL;
 		};
 		[[nodiscard]] std::string squareToAlgebraic(const chess::squareAnnotations square);
-		[[nodiscard]] inline constexpr char pieceToChar(const chess::boardAnnotations piece, const bool uciFormat) {
+		[[nodiscard]] constexpr char pieceToChar(const chess::boardAnnotations piece, const bool uciFormat) {
 			if (uciFormat) {
 				constexpr char conversionList[] = { '\0', 'p', 'n', 'b', 'r', 'q', 'k', '\0', '\0', 'p', 'n', 'b', 'r', 'q', 'k', '\0' };
 				return conversionList[piece];
@@ -89,8 +89,8 @@ namespace chess {
 				return conversionList[piece];
 			}
 		}
-		[[nodiscard]] inline constexpr u64 bitboardFromIndex(const u8 index) { return 1ULL << index; };
-		[[nodiscard]] inline constexpr chess::boardAnnotations oppositeTurn(const chess::boardAnnotations piece) noexcept {
+		[[nodiscard]] constexpr u64 bitboardFromIndex(const u8 index) { return 1ULL << index; };
+		[[nodiscard]] constexpr chess::boardAnnotations oppositeTurn(const chess::boardAnnotations piece) noexcept {
 			return static_cast<chess::boardAnnotations>(piece ^ 0x8);
 		}
 
@@ -98,7 +98,7 @@ namespace chess {
 
 			constexpr u64 bitboardFull { 0xFFFFFFFFFFFFFFFFULL };
 			constexpr u64 bitboardIter { 1ULL << 63 };
-			inline constexpr squareAnnotations operator++(squareAnnotations& square) noexcept {
+			constexpr squareAnnotations operator++(squareAnnotations& square) noexcept {
 				return square = static_cast<squareAnnotations>(square + 1);
 			}
 
@@ -109,38 +109,19 @@ namespace chess {
 					constexpr chess::u64 vertical { 0x0101010101010101ULL };
 					constexpr chess::u64 diagonal { 0x0102040810204080ULL };
 					constexpr chess::u64 antiDiagonal { 0x8040201008040201ULL };
-					for (u8 d { chess::attackRayDirection::north }; d <= chess::attackRayDirection::northWest; d++) {
-						for (std::size_t y { 0 }; y < 8; y++) {
-							for (std::size_t x { 0 }; x < 8; x++) {
-								switch (d) {
-									case chess::attackRayDirection::north:    // North
-										resultRays[d][y * 8 + x] = ((vertical << x) ^ (1ULL << (y * 8 + x))) & (chess::util::constants::bitboardFull << (y * 8));
-										break;
-									case chess::attackRayDirection::south:    // South
-										resultRays[d][y * 8 + x] = ((vertical << x) ^ (1ULL << (y * 8 + x))) & ~(chess::util::constants::bitboardFull << (y * 8));
-										break;
-									case chess::attackRayDirection::east:    // East
-										resultRays[d][y * 8 + x] = ((horizontal << y * 8) ^ (1ULL << (y * 8 + x))) & ~(chess::util::constants::bitboardFull << (y * 8 + x));
-										break;
-									case chess::attackRayDirection::west:    // West
-										resultRays[d][y * 8 + x] = ((horizontal << y * 8) ^ (1ULL << (y * 8 + x))) & (chess::util::constants::bitboardFull << (y * 8 + x));
-										break;
-									case chess::attackRayDirection::northEast:    // NorthEast
-										resultRays[d][y * 8 + x] = ((x + y > 6 ? diagonal << (8 * (x + y - 7)) : diagonal >> (8 * (7 - x - y))) ^ (1ULL << (y * 8 + x))) & (chess::util::constants::bitboardFull << (y * 8));
-										break;
-									case chess::attackRayDirection::southWest:    // SouthWest
-										resultRays[d][y * 8 + x] = ((x + y > 6 ? diagonal << (8 * (x + y - 7)) : diagonal >> (8 * (7 - x - y))) ^ (1ULL << (y * 8 + x))) & ~(chess::util::constants::bitboardFull << (y * 8));
-										break;
-									case chess::attackRayDirection::southEast:    // SouthEast
-										resultRays[d][y * 8 + x] = ((y > x ? antiDiagonal << (8 * (y - x)) : antiDiagonal >> (8 * (x - y))) ^ (1ULL << (y * 8 + x))) & ~(chess::util::constants::bitboardFull << (y * 8 + x));
-										break;
-									case chess::attackRayDirection::northWest:    // NorthWest
-										resultRays[d][y * 8 + x] = ((y > x ? antiDiagonal << (8 * (y - x)) : antiDiagonal >> (8 * (x - y))) ^ (1ULL << (y * 8 + x))) & (chess::util::constants::bitboardFull << (y * 8 + x));
-										break;
-								}
-							}
-						}
-					}
+                    for (std::size_t y { 0 }; y < 8; y++) {
+                        for (std::size_t x { 0 }; x < 8; x++) {
+                            resultRays[chess::attackRayDirection::north][y * 8 + x] = ((vertical << x) ^ (1ULL << (y * 8 + x))) & (chess::util::constants::bitboardFull << (y * 8));
+                            resultRays[chess::attackRayDirection::south][y * 8 + x] = ((vertical << x) ^ (1ULL << (y * 8 + x))) & ~(chess::util::constants::bitboardFull << (y * 8));
+                            resultRays[chess::attackRayDirection::east][y * 8 + x] = ((horizontal << y * 8) ^ (1ULL << (y * 8 + x))) & ~(chess::util::constants::bitboardFull << (y * 8 + x));
+                            resultRays[chess::attackRayDirection::west][y * 8 + x] = ((horizontal << y * 8) ^ (1ULL << (y * 8 + x))) & (chess::util::constants::bitboardFull << (y * 8 + x));
+                            resultRays[chess::attackRayDirection::northEast][y * 8 + x] = ((x + y > 6 ? diagonal << (8 * (x + y - 7)) : diagonal >> (8 * (7 - x - y))) ^ (1ULL << (y * 8 + x))) & (chess::util::constants::bitboardFull << (y * 8));
+                            resultRays[chess::attackRayDirection::southWest][y * 8 + x] = ((x + y > 6 ? diagonal << (8 * (x + y - 7)) : diagonal >> (8 * (7 - x - y))) ^ (1ULL << (y * 8 + x))) & ~(chess::util::constants::bitboardFull << (y * 8));
+                            resultRays[chess::attackRayDirection::southEast][y * 8 + x] = ((y > x ? antiDiagonal << (8 * (y - x)) : antiDiagonal >> (8 * (x - y))) ^ (1ULL << (y * 8 + x))) & ~(chess::util::constants::bitboardFull << (y * 8 + x));
+                            resultRays[chess::attackRayDirection::northWest][y * 8 + x] = ((y > x ? antiDiagonal << (8 * (y - x)) : antiDiagonal >> (8 * (x - y))) ^ (1ULL << (y * 8 + x))) & (chess::util::constants::bitboardFull << (y * 8 + x));
+                        }
+                    }
+					
 					return resultRays;
 				}
 
@@ -149,11 +130,11 @@ namespace chess {
 					std::array<chess::u64, 64> resultJumps {};
 					chess::u64 defaultJump { 0x0000142200221400ULL };    // Attacks from e4
 					for (chess::squareAnnotations i { h1 }; i <= f4; ++i) {
-						resultJumps[i] = (defaultJump >> (27ULL - i)) & ~fileMask[i % 8];
+						resultJumps[i] = (defaultJump >> (e4 - i)) & ~fileMask[i % 8];
 					}
 
 					for (chess::squareAnnotations i { e4 }; i <= a8; ++i) {
-						resultJumps[i] = (defaultJump << (i - 27ULL)) & ~fileMask[i % 8];
+						resultJumps[i] = (defaultJump << (i - e4)) & ~fileMask[i % 8];
 					}
 
 					return resultJumps;
@@ -179,12 +160,12 @@ namespace chess {
 					std::array<std::array<chess::u64, 64>, 2> resultAttacks {};
 					constexpr chess::u64 defaultAttackWhite { 0x0000000000000280ULL };
 					for (chess::squareAnnotations i { h1 }; i <= a8; ++i) {
-						resultAttacks[1][i] = (defaultAttackWhite << i) & ~fileMask[i % 8] & ~0xFFULL;
+						resultAttacks[1][i] = (defaultAttackWhite << i) & ~fileMask[i % 8];
 					}
 
 					constexpr chess::u64 defaultAttackBlack { 0x0140000000000000ULL };
 					for (chess::squareAnnotations i { h1 }; i <= a8; ++i) {
-						resultAttacks[0][i] = (defaultAttackBlack >> (a8 - i)) & ~fileMask[i % 8] & ~0xFF00000000000000ULL;
+						resultAttacks[0][i] = (defaultAttackBlack >> (a8 - i)) & ~fileMask[i % 8];
 					}
 
 					return resultAttacks;
@@ -198,8 +179,9 @@ namespace chess {
 					std::array<std::array<chess::u64, 16>, 64> result {};
 					// Seed the random number generation
 					auto previous = [&time_from_string]() -> chess::u64 {
-						const char* t { __TIME__ };
-						return time_from_string(t, 0) * 60 * 60 + time_from_string(t, 3) * 60 + time_from_string(t, 6);
+						return time_from_string(__TIME__, 0) * 360 /* hours */ 
+                             + time_from_string(__TIME__, 3) * 60 /* minutes */ 
+                             + time_from_string(__TIME__, 6) /* seconds */;
 					}();
 					for (auto& square : result) {
 						for (auto& piece : square) {
@@ -252,24 +234,24 @@ namespace chess {
 		}
 
 		// Functions to modify board/piece annotations
-		[[nodiscard]] inline constexpr chess::boardAnnotations colorOf(const chess::boardAnnotations piece) noexcept {
+		[[nodiscard]] constexpr chess::boardAnnotations colorOf(const chess::boardAnnotations piece) noexcept {
 			return static_cast<chess::boardAnnotations>(piece & 0x08);
 		}
-		[[nodiscard]] inline constexpr chess::boardAnnotations oppositeColorOf(const chess::boardAnnotations piece) noexcept {
+		[[nodiscard]] constexpr chess::boardAnnotations oppositeColorOf(const chess::boardAnnotations piece) noexcept {
 			return static_cast<chess::boardAnnotations>(piece ^ 0x08);
 		}
 
-		[[nodiscard]] inline constexpr chess::boardAnnotations nullOf(const chess::boardAnnotations piece) noexcept {
+		[[nodiscard]] constexpr chess::boardAnnotations nullOf(const chess::boardAnnotations piece) noexcept {
 			return static_cast<chess::boardAnnotations>(piece | 0x07);
 		}
-		[[nodiscard]] inline constexpr chess::u16 isPiece(chess::boardAnnotations piece) { return (piece & 0x7) == 0x7 ? 0x0000 : 0x1000; };
+		[[nodiscard]] constexpr chess::u16 isPiece(chess::boardAnnotations piece) { return (piece & 0x7) == 0x7 ? 0x0000 : 0x1000; };
 
-		[[nodiscard]] inline constexpr chess::boardAnnotations constructPiece(const chess::boardAnnotations piece, const chess::boardAnnotations color) {
+		[[nodiscard]] constexpr chess::boardAnnotations constructPiece(const chess::boardAnnotations piece, const chess::boardAnnotations color) {
 			return static_cast<chess::boardAnnotations>(piece | color);
 		}
 
 		template <chess::attackRayDirection direction>
-		[[nodiscard]] inline constexpr chess::u64 positiveRayAttacks(const chess::u8 squareFrom, const chess::u64 occupiedSquares) noexcept {
+		[[nodiscard]] constexpr chess::u64 positiveRayAttacks(const chess::u8 squareFrom, const chess::u64 occupiedSquares) noexcept {
 			chess::u64 attacks { chess::util::constants::attackRays[direction][squareFrom] };
 			chess::u64 blocker { (attacks & occupiedSquares) | 0x8000000000000000 };
 			attacks ^= chess::util::constants::attackRays[direction][chess::util::ctz64(blocker)];
@@ -277,7 +259,7 @@ namespace chess {
 		}
 
 		template <chess::attackRayDirection direction>
-		[[nodiscard]] inline constexpr chess::u64 negativeRayAttacks(const chess::u8 squareFrom, const chess::u64 occupiedSquares) noexcept {
+		[[nodiscard]] constexpr chess::u64 negativeRayAttacks(const chess::u8 squareFrom, const chess::u64 occupiedSquares) noexcept {
 			chess::u64 attacks { chess::util::constants::attackRays[direction][squareFrom] };
 			chess::u64 blocker { (attacks & occupiedSquares) | 0x1 };
 			attacks ^= chess::util::constants::attackRays[direction][63U - chess::util::clz64(blocker)];
@@ -290,12 +272,12 @@ namespace chess {
 		chess::u8 originIndex;
 		chess::u8 destinationIndex;
 		chess::u16 flags;
-		[[nodiscard]] inline constexpr chess::boardAnnotations capturedPiece() const noexcept { return static_cast<chess::boardAnnotations>((flags >> 0) & 0x000F); }
-		[[nodiscard]] inline constexpr chess::boardAnnotations movePiece() const noexcept { return static_cast<chess::boardAnnotations>((flags >> 4) & 0x000F); }
-		[[nodiscard]] inline constexpr chess::boardAnnotations promotionPiece() const noexcept { return static_cast<chess::boardAnnotations>((flags >> 8) & 0x000F); }
-		[[nodiscard]] inline constexpr chess::u64 originSquare() const noexcept { return 1ULL << originIndex; }
-		[[nodiscard]] inline constexpr chess::u64 destinationSquare() const noexcept { return 1ULL << destinationIndex; }
-		[[nodiscard]] inline constexpr chess::u16 moveFlags() const noexcept { return flags & 0xFF00; }
+		[[nodiscard]] constexpr chess::boardAnnotations capturedPiece() const noexcept { return static_cast<chess::boardAnnotations>((flags >> 0) & 0x000F); }
+		[[nodiscard]] constexpr chess::boardAnnotations movePiece() const noexcept { return static_cast<chess::boardAnnotations>((flags >> 4) & 0x000F); }
+		[[nodiscard]] constexpr chess::boardAnnotations promotionPiece() const noexcept { return static_cast<chess::boardAnnotations>((flags >> 8) & 0x000F); }
+		[[nodiscard]] constexpr chess::u64 originSquare() const noexcept { return 1ULL << originIndex; }
+		[[nodiscard]] constexpr chess::u64 destinationSquare() const noexcept { return 1ULL << destinationIndex; }
+		[[nodiscard]] constexpr chess::u16 moveFlags() const noexcept { return flags & 0xFF00; }
 		[[nodiscard]] inline std::string toString() const noexcept {
 			auto result { chess::util::squareToAlgebraic(static_cast<chess::squareAnnotations>(this->originIndex)) + chess::util::squareToAlgebraic(static_cast<chess::squareAnnotations>(this->destinationIndex)) };
 			if (char promotion { chess::util::pieceToChar(this->promotionPiece(), true) }; promotion == '\0')
@@ -304,7 +286,7 @@ namespace chess {
 				return result + promotion;
 		}
 	};
-    [[nodiscard]] inline constexpr bool operator==(const moveData lhs, const moveData rhs){
+    [[nodiscard]] constexpr bool operator==(const moveData lhs, const moveData rhs){
 		return lhs.originIndex == rhs.originIndex && lhs.destinationIndex == rhs.destinationIndex && lhs.flags == rhs.flags;
 	};
 
@@ -325,7 +307,7 @@ namespace chess {
 		[[nodiscard]] inline T* begin() noexcept { return moves.data(); }
 		[[nodiscard]] inline T* end() noexcept { return insertLocation; }
 		[[nodiscard]] inline chess::u64 size() const noexcept { return static_cast<chess::u64>(insertLocation - moves.data()); }
-        [[nodiscard]] inline constexpr size_t capacity() const noexcept { return sz; }
+        [[nodiscard]] constexpr size_t capacity() const noexcept { return sz; }
 	};
 
 	struct position {
@@ -368,15 +350,15 @@ namespace chess {
 		}
 
 		[[nodiscard]] std::string ascii() const noexcept;
-		[[nodiscard]] inline constexpr chess::boardAnnotations turn() const noexcept { return static_cast<chess::boardAnnotations>(flags & 0x08); }    // 0 - 1 (1 bit)
-		[[nodiscard]] inline constexpr chess::u64 occupied() const noexcept { return bitboards[chess::boardAnnotations::white] | bitboards[chess::boardAnnotations::black]; }
-		[[nodiscard]] inline constexpr chess::u64 empty() const noexcept { return ~occupied(); }
-		[[nodiscard]] inline constexpr bool valid() const noexcept { return flags & 0x04; }    // 0 - 1 (1 bit)
-		[[nodiscard]] inline constexpr bool castleWK() const noexcept { return flags & 0x80; }
-		[[nodiscard]] inline constexpr bool castleWQ() const noexcept { return flags & 0x40; }
-		[[nodiscard]] inline constexpr bool castleBK() const noexcept { return flags & 0x20; }
-		[[nodiscard]] inline constexpr bool castleBQ() const noexcept { return flags & 0x10; }
-		inline constexpr void setZobrist() noexcept {
+		[[nodiscard]] constexpr chess::boardAnnotations turn() const noexcept { return static_cast<chess::boardAnnotations>(flags & 0x08); }    // 0 - 1 (1 bit)
+		[[nodiscard]] constexpr chess::u64 occupied() const noexcept { return bitboards[chess::boardAnnotations::white] | bitboards[chess::boardAnnotations::black]; }
+		[[nodiscard]] constexpr chess::u64 empty() const noexcept { return ~occupied(); }
+		[[nodiscard]] constexpr bool valid() const noexcept { return flags & 0x04; }    // 0 - 1 (1 bit)
+		[[nodiscard]] constexpr bool castleWK() const noexcept { return flags & 0x80; }
+		[[nodiscard]] constexpr bool castleWQ() const noexcept { return flags & 0x40; }
+		[[nodiscard]] constexpr bool castleBK() const noexcept { return flags & 0x20; }
+		[[nodiscard]] constexpr bool castleBQ() const noexcept { return flags & 0x10; }
+		constexpr void setZobrist() noexcept {
 			this->zobristHash = 0;
 			for (size_t index = 0; index < 64; index++) {
 				this->zobristHash ^= chess::util::constants::zobristBitStrings[index][pieceAtIndex[index]];
@@ -399,8 +381,8 @@ namespace chess {
 			gameHistory { { chess::position::fromFen(fen) } } {}
 
 		[[nodiscard]] staticVector<moveData> moves() const noexcept;
-		[[nodiscard]] inline constexpr u8 result() const noexcept { return 0; };    // unused
-		[[nodiscard]] inline constexpr bool finished() const noexcept { return this->threeFoldRep() || this->moves().size() == 0; }
+		[[nodiscard]] constexpr u8 result() const noexcept { return 0; };    // unused
+		[[nodiscard]] constexpr bool finished() const noexcept { return this->threeFoldRep() || this->moves().size() == 0; }
 		[[nodiscard]] constexpr bool threeFoldRep() const noexcept {
 			size_t count = 0;
 			for (size_t i = 0; i < gameHistory.size(); i += 2) {
