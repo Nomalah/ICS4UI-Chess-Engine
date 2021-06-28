@@ -47,7 +47,7 @@
 				const auto destinationPiece { this->pieceAtIndex[destinationSquare] };
 				legalMoves.append({ .originIndex      = currentAllyPieceIndex,
 				                    .destinationIndex = destinationSquare,
-				                    .flags            = static_cast<u16>(isPiece(destinationPiece) | (piece << 4) | destinationPiece) });
+				                    .flags            = static_cast<u16>(getCaptureFlag(destinationPiece) | (piece << 4) | destinationPiece) });
 				allyPieceMoves ^= bitboardFromIndex(destinationSquare);
 			}
 			allyPieces ^= bitboardFromIndex(currentAllyPieceIndex);
@@ -70,7 +70,7 @@
 							const auto capturedPiece = this->pieceAtIndex[moveSpot];
 							legalMoves.append({ .originIndex      = blockerLocation,
 							                    .destinationIndex = moveSpot,
-							                    .flags            = static_cast<u16>(isPiece(capturedPiece) | (this->pieceAtIndex[blockerLocation] << 4) | capturedPiece) });
+							                    .flags            = static_cast<u16>(getCaptureFlag(capturedPiece) | (this->pieceAtIndex[blockerLocation] << 4) | capturedPiece) });
 							movementMask ^= bitboardFromIndex(moveSpot);
 						}
 					} else if (this->pieceAtIndex[blockerLocation] == allyPawn) {
@@ -107,7 +107,7 @@
 							const auto capturedPiece { this->pieceAtIndex[moveSpot] };
 							legalMoves.append({ .originIndex      = blockerLocation,
 							                    .destinationIndex = moveSpot,
-							                    .flags            = static_cast<u16>(isPiece(capturedPiece) | (this->pieceAtIndex[blockerLocation] << 4) | capturedPiece) });
+							                    .flags            = static_cast<u16>(getCaptureFlag(capturedPiece) | (this->pieceAtIndex[blockerLocation] << 4) | capturedPiece) });
 							movementMask ^= bitboardFromIndex(moveSpot);
 						}
 					}
@@ -128,7 +128,7 @@
 							const auto capturedPiece { this->pieceAtIndex[moveSpot] };
 							legalMoves.append({ .originIndex      = blockerLocation,
 							                    .destinationIndex = moveSpot,
-							                    .flags            = static_cast<u16>(isPiece(capturedPiece) | (this->pieceAtIndex[blockerLocation] << 4) | capturedPiece) });
+							                    .flags            = static_cast<u16>(getCaptureFlag(capturedPiece) | (this->pieceAtIndex[blockerLocation] << 4) | capturedPiece) });
 							movementMask ^= bitboardFromIndex(moveSpot);
 						}
 					} else if (this->pieceAtIndex[blockerLocation] == allyPawn) {

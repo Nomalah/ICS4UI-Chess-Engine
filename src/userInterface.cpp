@@ -44,7 +44,7 @@
 		for (const char piece : tokens[0]) {
 			if (piece > '0' && piece <= '9') {
 				for (char _ = 0; _ < piece - '0'; _++, insertIndex--) {
-					result.pieceAtIndex[insertIndex] = boardAnnotations::whiteNull;
+					result.pieceAtIndex[insertIndex] = boardAnnotations::null;
 				}
 			} else if (piece != '/') {
 				switch (u64 insertAtSquare = chess::util::bitboardFromIndex(insertIndex); piece) {
@@ -143,7 +143,8 @@
 		// Set fullmove number
 		// (Unused and not implimented)
 
-		// Set the zobrist hash of the position
+		// Set the zobrist hash of the position]
+		result.bitboards[boardAnnotations::occupied] = result.bitboards[boardAnnotations::white] | result.bitboards[boardAnnotations::black];
 		result.setZobrist();
 		return result;
 	} else {

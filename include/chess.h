@@ -32,7 +32,7 @@ namespace chess {
 		rook        = 0x4,
 		queen       = 0x5,
 		king        = 0x6,
-		null        = 0x7,
+
 		black       = 0x0,
 		blackPawn   = 0x1,
 		blackKnight = 0x2,
@@ -40,7 +40,7 @@ namespace chess {
 		blackRook   = 0x4,
 		blackQueen  = 0x5,
 		blackKing   = 0x6,
-		blackNull   = 0x7,
+
 		white       = 0x8,
 		whitePawn   = 0x9,
 		whiteKnight = 0xA,
@@ -48,7 +48,9 @@ namespace chess {
 		whiteRook   = 0xC,
 		whiteQueen  = 0xD,
 		whiteKing   = 0xE,
-		whiteNull   = 0xF
+
+		null        = 0x7,
+        occupied    = 0xF
 	};
 
 	enum squareAnnotations : chess::u8
@@ -241,10 +243,7 @@ namespace chess {
 			return static_cast<chess::boardAnnotations>(piece ^ 0x08);
 		}
 
-		[[nodiscard]] constexpr chess::boardAnnotations nullOf(const chess::boardAnnotations piece) noexcept {
-			return static_cast<chess::boardAnnotations>(piece | 0x07);
-		}
-		[[nodiscard]] constexpr chess::u16 isPiece(chess::boardAnnotations piece) { return (piece & 0x7) == 0x7 ? 0x0000 : 0x1000; };
+		[[nodiscard]] constexpr chess::u16 getCaptureFlag(chess::boardAnnotations piece) { return piece != null ? 0x1000 : 0x0000; };
 
 		[[nodiscard]] constexpr chess::boardAnnotations constructPiece(const chess::boardAnnotations piece, const chess::boardAnnotations color) {
 			return static_cast<chess::boardAnnotations>(piece | color);
@@ -351,7 +350,7 @@ namespace chess {
 
 		[[nodiscard]] std::string ascii() const noexcept;
 		[[nodiscard]] constexpr chess::boardAnnotations turn() const noexcept { return static_cast<chess::boardAnnotations>(flags & 0x08); }    // 0 - 1 (1 bit)
-		[[nodiscard]] constexpr chess::u64 occupied() const noexcept { return bitboards[chess::boardAnnotations::white] | bitboards[chess::boardAnnotations::black]; }
+		[[nodiscard]] constexpr chess::u64 occupied() const noexcept { return bitboards[chess::boardAnnotations::occupied]; }
 		[[nodiscard]] constexpr chess::u64 empty() const noexcept { return ~occupied(); }
 		[[nodiscard]] constexpr bool valid() const noexcept { return flags & 0x04; }    // 0 - 1 (1 bit)
 		[[nodiscard]] constexpr bool castleWK() const noexcept { return flags & 0x80; }

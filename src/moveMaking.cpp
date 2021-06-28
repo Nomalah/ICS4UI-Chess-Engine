@@ -18,7 +18,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 	// Remove the piece from it's origin square
 	result.bitboards[chess::util::colorOf(desiredMove.movePiece())] &= ~desiredMove.originSquare();    // Colour only
 	result.bitboards[desiredMove.movePiece()] &= ~desiredMove.originSquare();                          // Colour and Piece
-	result.pieceAtIndex[desiredMove.originIndex] = chess::util::nullOf(desiredMove.movePiece());       // Set index value to null / Empty
+	result.pieceAtIndex[desiredMove.originIndex] = boardAnnotations::null;       // Set index value to null / Empty
 	switch (desiredMove.moveFlags()) {
 		case 0x1000:
 			result.halfMoveClock = 0;                                                                                   // Capture
@@ -45,7 +45,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 			result.bitboards[white] ^= 0x7;        // flip the bits for the white bitboard
 			result.bitboards[whiteRook] ^= 0x5;    // Flip the bits for the castling rook
 			result.bitboards[whiteKing] = 0x2;
-			result.pieceAtIndex[h1]     = whiteNull;
+			result.pieceAtIndex[h1]     = null;
 			result.pieceAtIndex[g1]     = whiteKing;
 			result.pieceAtIndex[f1]     = whiteRook;
 			break;
@@ -53,7 +53,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 			result.bitboards[white] ^= 0xB0;        // flip the bits for the white bitboard
 			result.bitboards[whiteRook] ^= 0x90;    // Flip the bits for the castling rook
 			result.bitboards[whiteKing] = 0x20;
-			result.pieceAtIndex[a1]     = whiteNull;
+			result.pieceAtIndex[a1]     = null;
 			result.pieceAtIndex[c1]     = whiteKing;
 			result.pieceAtIndex[d1]     = whiteRook;
 			break;
@@ -61,7 +61,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 			result.bitboards[black] ^= 0x0700000000000000ULL;        // flip the bits for the black bitboard
 			result.bitboards[blackRook] ^= 0x0500000000000000ULL;    // Flip the bits for the castling rook
 			result.bitboards[blackKing] = 0x0200000000000000ULL;
-			result.pieceAtIndex[h8]     = blackNull;
+			result.pieceAtIndex[h8]     = null;
 			result.pieceAtIndex[g8]     = blackKing;
 			result.pieceAtIndex[f8]     = blackRook;
 			break;
@@ -69,7 +69,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 			result.bitboards[black] ^= 0xB000000000000000ULL;        // flip the bits for the black bitboard
 			result.bitboards[blackRook] ^= 0x9000000000000000ULL;    // Flip the bits for the castling rook
 			result.bitboards[blackKing] = 0x2000000000000000ULL;
-			result.pieceAtIndex[a8]     = whiteNull;
+			result.pieceAtIndex[a8]     = null;
 			result.pieceAtIndex[c8]     = blackKing;
 			result.pieceAtIndex[d8]     = blackRook;
 			break;
@@ -79,7 +79,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 			result.bitboards[black] &= ~(desiredMove.destinationSquare() >> 8);
 			result.bitboards[blackPawn] &= ~(desiredMove.destinationSquare() >> 8);
 			result.pieceAtIndex[desiredMove.destinationIndex]     = whitePawn;
-			result.pieceAtIndex[desiredMove.destinationIndex - 8] = blackNull;
+			result.pieceAtIndex[desiredMove.destinationIndex - 8] = null;
 			break;
 		case 0x7000:    // Black taking white en passent
 			result.bitboards[black] |= desiredMove.destinationSquare();
@@ -87,7 +87,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 			result.bitboards[white] &= ~(desiredMove.destinationSquare() << 8);
 			result.bitboards[whitePawn] &= ~(desiredMove.destinationSquare() << 8);
 			result.pieceAtIndex[desiredMove.destinationIndex]     = blackPawn;
-			result.pieceAtIndex[desiredMove.destinationIndex + 8] = whiteNull;
+			result.pieceAtIndex[desiredMove.destinationIndex + 8] = null;
 			break;
 		case 0x8000:                                                           // White double pawn push
 			result.bitboards[white] |= desiredMove.destinationSquare();        // Colour only
@@ -141,6 +141,8 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 		default:
 			break;
 	}
+
+	result.bitboards[boardAnnotations::occupied] = result.bitboards[white] | result.bitboards[black];
 	result.setZobrist();
 	return result;
 }
@@ -192,7 +194,7 @@ void chess::game::move(const std::string& uciMove) noexcept {
 			if (libraryMove.originIndex >= h7 && libraryMove.originIndex <= a7 && libraryMove.destinationIndex >= h5 && libraryMove.destinationIndex <= a5) {
 				libraryMove.flags |= 0x9000;
 			} else if (libraryMove.originIndex % 8 != libraryMove.destinationIndex % 8) {
-				if (chess::util::isPiece(libraryMove.capturedPiece()) ^ 0x1000) {
+				if (chess::util::getCaptureFlag(libraryMove.capturedPiece()) ^ 0x1000) {
 					libraryMove.flags |= 0x7000;
 					libraryMove.flags &= 0xFFF0;
 					libraryMove.flags |= chess::whitePawn;
@@ -203,7 +205,7 @@ void chess::game::move(const std::string& uciMove) noexcept {
 			if (libraryMove.originIndex >= h2 && libraryMove.originIndex <= a2 && libraryMove.destinationIndex >= h4 && libraryMove.destinationIndex <= a4) {
 				libraryMove.flags |= 0x8000;
 			} else if (libraryMove.originIndex % 8 != libraryMove.destinationIndex % 8) {
-				if (chess::util::isPiece(libraryMove.capturedPiece()) ^ 0x1000) {
+				if (chess::util::getCaptureFlag(libraryMove.capturedPiece()) ^ 0x1000) {
 					libraryMove.flags |= 0x6000;
 					libraryMove.flags &= 0xFFF0;
 					libraryMove.flags |= chess::blackPawn;
@@ -215,7 +217,7 @@ void chess::game::move(const std::string& uciMove) noexcept {
 	}
 
 	if ((libraryMove.flags & 0xF000) == 0) {
-		libraryMove.flags |= chess::util::isPiece(libraryMove.capturedPiece());
+		libraryMove.flags |= chess::util::getCaptureFlag(libraryMove.capturedPiece());
 	}
 
 	this->move(libraryMove);
