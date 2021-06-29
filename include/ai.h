@@ -6,7 +6,12 @@
 #include <cmath>
 #include <memory>
 
-#define SWAP(a, b) do{ auto _c { (a) }; (a) = (b); (b) = _c; }while(0)
+#define SWAP(a, b)       \
+	do {                 \
+		auto _c { (a) }; \
+		(a) = (b);       \
+		(b) = _c;        \
+	} while (0)
 
 namespace chess::ai {
 #ifdef AI_MAX_PLY
@@ -40,9 +45,9 @@ namespace chess::ai {
 	class transpositionTable {
 		static_assert(isPowerOfTwo<sz>(), "Transposition table requires a power of two size");
 		// https://github.com/SebLague/Chess-AI/blob/main/Assets/Scripts/Core/TranspositionTable.cs
-        // 24 bytes
-        public:
-        struct tableEntry {
+		// 24 bytes
+		 public:
+		struct tableEntry {
 			u64 key;
 			chess::moveData move;
 			int posEval;
@@ -61,12 +66,12 @@ namespace chess::ai {
 			boardPos { board }, tableData { std::make_unique<std::array<tableEntry, sz>>() }, tableDataBegin { tableData->data() }, overwrites { 0 } {}
 
 		static constexpr int lookupFailed { std::numeric_limits<int>::min() };
-        static constexpr int unused { 0 };
+		static constexpr int unused { 0 };
 		static constexpr int exact { 1 };
 		static constexpr int lowerBound { 2 };
 		static constexpr int upperBound { 3 };
 
-        size_t getOverwrites() {
+		size_t getOverwrites() {
 			return overwrites;
 		}
 		void clear() {
@@ -82,15 +87,16 @@ namespace chess::ai {
 		}
 
 		void storeEval(int depth, int posEval, int evalType, chess::moveData move) {
-			if (tableDataBegin[index()].nodeType != unused) overwrites++;
+			if (tableDataBegin[index()].nodeType != unused)
+				overwrites++;
 
-			if (depth >= tableDataBegin[index()].depth){
+			if (depth >= tableDataBegin[index()].depth) {
 				tableDataBegin[index()] = { .key      = boardPos.currentPosition().zobristHash,
 					                        .move     = move,
 					                        .posEval  = posEval,
 					                        .depth    = depth,
 					                        .nodeType = evalType };
-            }
+			}
 		}
 
 		int lookupEval(int depth, int alpha, int beta) {
@@ -114,23 +120,23 @@ namespace chess::ai {
 		}
 	};
 
-    struct botWeights{
-        struct {
-            int pieceValues[16];
-            int hashMove;
-            int notHashMove;
-            int promotionMultiplier;
-            int captureMultiplier;
-            int kingsideCastling;
-            int queensideCastling;
-            int enPassant;
-            int pawnDoublePush;
-            int defaultMove;
-        } moveOrdering;
+	struct botWeights {
+		struct {
+			int pieceValues[16];
+			int hashMove;
+			int notHashMove;
+			int promotionMultiplier;
+			int captureMultiplier;
+			int kingsideCastling;
+			int queensideCastling;
+			int enPassant;
+			int pawnDoublePush;
+			int defaultMove;
+		} moveOrdering;
 
-        struct {
-            int pieceValues[16];
-        } evaluate;
+		struct {
+			int pieceValues[16];
+		} evaluate;
 	};
 
 	class bot {
@@ -138,102 +144,103 @@ namespace chess::ai {
 		botWeights internalWeights;
 
 		 public:
-        bot(const botWeights& setWeights) : internalWeights{setWeights} {}
-        // Order moves to induce more beta cutoffs
-        template<size_t TTsz, size_t moveListsz>
-        void orderMoves(staticVector<moveData, moveListsz>& moveList, const transpositionTable<TTsz>& TT) const noexcept {
-            std::array<int, moveListsz> moveEvaluationHeuristicList {};
-            const auto hashMove { TT.getStoredMove() };
-            auto evaluateInsertLocation { moveEvaluationHeuristicList.begin() };
-            for (const auto moveToEvaluate : moveList){
-                *evaluateInsertLocation = ((hashMove == moveToEvaluate) ? this->internalWeights.moveOrdering.hashMove : this->internalWeights.moveOrdering.notHashMove);
-                switch(moveToEvaluate.moveFlags()){
-                    // Promotion and capturing logic
-                    case 0x0100 ... 0x0F00:
-                        // Promotion
-                        *evaluateInsertLocation += this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.promotionPiece()] * this->internalWeights.moveOrdering.promotionMultiplier;
-                        break;
-                    case 0x1100 ... 0x1F00:
-                        // Promotion & Capture
-                        *evaluateInsertLocation += this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.promotionPiece()] * this->internalWeights.moveOrdering.promotionMultiplier;
-                        [[fallthrough]];
-                    case 0x1000:
-                        // Capture logic
-                        *evaluateInsertLocation += (this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.capturedPiece()] - this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.movePiece()]) * this->internalWeights.moveOrdering.captureMultiplier;
-                        break;
+		bot(const botWeights& setWeights) :
+			internalWeights { setWeights } {}
+		// Order moves to induce more beta cutoffs
+		template <size_t TTsz, size_t moveListsz>
+		void orderMoves(staticVector<moveData, moveListsz>& moveList, const transpositionTable<TTsz>& TT) const noexcept {
+			std::array<int, moveListsz> moveEvaluationHeuristicList {};
+			const auto hashMove { TT.getStoredMove() };
+			auto evaluateInsertLocation { moveEvaluationHeuristicList.begin() };
+			for (const auto moveToEvaluate : moveList) {
+				*evaluateInsertLocation = ((hashMove == moveToEvaluate) ? this->internalWeights.moveOrdering.hashMove : this->internalWeights.moveOrdering.notHashMove);
+				switch (moveToEvaluate.moveFlags()) {
+					// Promotion and capturing logic
+					case 0x0100 ... 0x0F00:
+						// Promotion
+						*evaluateInsertLocation += this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.promotionPiece()] * this->internalWeights.moveOrdering.promotionMultiplier;
+						break;
+					case 0x1100 ... 0x1F00:
+						// Promotion & Capture
+						*evaluateInsertLocation += this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.promotionPiece()] * this->internalWeights.moveOrdering.promotionMultiplier;
+						[[fallthrough]];
+					case 0x1000:
+						// Capture logic
+						*evaluateInsertLocation += (this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.capturedPiece()] - this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.movePiece()]) * this->internalWeights.moveOrdering.captureMultiplier;
+						break;
 
-                    // Castling is probably a good idea
-                    case 0x2000:
-                        [[fallthrough]];
-                    case 0x4000:
-                        *evaluateInsertLocation += this->internalWeights.moveOrdering.kingsideCastling;
-                        break;
-                    case 0x3000:
-                        [[fallthrough]];
-                    case 0x5000:
-                        *evaluateInsertLocation += this->internalWeights.moveOrdering.queensideCastling;
-                        break;
+					// Castling is probably a good idea
+					case 0x2000:
+						[[fallthrough]];
+					case 0x4000:
+						*evaluateInsertLocation += this->internalWeights.moveOrdering.kingsideCastling;
+						break;
+					case 0x3000:
+						[[fallthrough]];
+					case 0x5000:
+						*evaluateInsertLocation += this->internalWeights.moveOrdering.queensideCastling;
+						break;
 
-                    // En passant doesn't really matter as it's very rare
-                    case 0x6000:
-                        [[fallthrough]];
-                    case 0x7000:
-                        *evaluateInsertLocation += this->internalWeights.moveOrdering.enPassant;
-                        break;
-                    
-                    // Pushing pawns is fun
-                    case 0x8000:
-                        [[fallthrough]];
-                    case 0x9000:
-                        *evaluateInsertLocation += this->internalWeights.moveOrdering.pawnDoublePush;
-                        break;
-                    
-                    // Default Bias/Weights
-                    default:
-                        *evaluateInsertLocation += this->internalWeights.moveOrdering.defaultMove;
-                        break;
-                }
-                ++evaluateInsertLocation;
-            }
+					// En passant doesn't really matter as it's very rare
+					case 0x6000:
+						[[fallthrough]];
+					case 0x7000:
+						*evaluateInsertLocation += this->internalWeights.moveOrdering.enPassant;
+						break;
 
-            // Sort based on the evaluation of moves
-            for(int i = 0; i < moveList.size(); i++){
-                for (int j = i + 1; j < moveList.size(); j++){
-                    if(moveEvaluationHeuristicList[i] < moveEvaluationHeuristicList[j]){
-                        SWAP(moveEvaluationHeuristicList[i], moveEvaluationHeuristicList[j]);
-                        SWAP(moveList[i], moveList[j]);
-                    }
-                }
-            }
-        }
+					// Pushing pawns is fun
+					case 0x8000:
+						[[fallthrough]];
+					case 0x9000:
+						*evaluateInsertLocation += this->internalWeights.moveOrdering.pawnDoublePush;
+						break;
 
-        [[nodiscard]] int evaluate(const chess::position& toEvaluate) const noexcept {
-            using namespace chess::util;
-            using namespace chess::util::constants;
-            static auto pieceValue = [&toEvaluate, this](chess::u8 piece) -> int {
-                return popcnt64(toEvaluate.bitboards[piece]) * this->internalWeights.evaluate.pieceValues[piece];
-            };
+					// Default Bias/Weights
+					default:
+						*evaluateInsertLocation += this->internalWeights.moveOrdering.defaultMove;
+						break;
+				}
+				++evaluateInsertLocation;
+			}
 
-            static auto positionalValue = [&toEvaluate](chess::u8 piece) -> int {
-                static constexpr chess::u64 positionValueCenter      = 0x0000001818000000;
-                static constexpr chess::u64 positionValueLargeCenter = 0x00003C3C3C3C0000;
-                //static constexpr int pieceValues[] = {0, -100, -300, -310, -500, -900, 0, 0, 0, 100, 300, 310, 500, 900, 0};
-                return popcnt64(toEvaluate.bitboards[piece] & positionValueCenter) * 50 + popcnt64(toEvaluate.bitboards[piece] & positionValueLargeCenter) * 25;
-            };
+			// Sort based on the evaluation of moves
+			for (int i = 0; i < moveList.size(); i++) {
+				for (int j = i + 1; j < moveList.size(); j++) {
+					if (moveEvaluationHeuristicList[i] < moveEvaluationHeuristicList[j]) {
+						SWAP(moveEvaluationHeuristicList[i], moveEvaluationHeuristicList[j]);
+						SWAP(moveList[i], moveList[j]);
+					}
+				}
+			}
+		}
 
-            int result = 0;
-            result += pieceValue(whitePawn) + positionalValue(whitePawn);
-            result += pieceValue(whiteKnight) + positionalValue(whiteKnight);
-            result += pieceValue(whiteBishop) + positionalValue(whiteBishop);
-            result += pieceValue(whiteRook) + positionalValue(whiteRook);
-            result += pieceValue(whiteQueen) + positionalValue(whiteQueen);
-            result -= pieceValue(blackPawn) + positionalValue(blackPawn);
-            result -= pieceValue(blackKnight) + positionalValue(blackKnight);
-            result -= pieceValue(blackBishop) + positionalValue(blackBishop);
-            result -= pieceValue(blackRook) + positionalValue(blackRook);
-            result -= pieceValue(blackQueen) + positionalValue(blackQueen);
-            return toEvaluate.turn() ? result - toEvaluate.halfMoveClock * 4 : -result + toEvaluate.halfMoveClock * 4;
-        }
+		[[nodiscard]] int evaluate(const chess::position& toEvaluate) const noexcept {
+			using namespace chess::util;
+			using namespace chess::util::constants;
+			static auto pieceValue = [&toEvaluate, this](chess::u8 piece) -> int {
+				return popcnt64(toEvaluate.bitboards[piece]) * this->internalWeights.evaluate.pieceValues[piece];
+			};
+
+			static auto positionalValue = [&toEvaluate](chess::u8 piece) -> int {
+				static constexpr chess::u64 positionValueCenter      = 0x0000001818000000;
+				static constexpr chess::u64 positionValueLargeCenter = 0x00003C3C3C3C0000;
+				//static constexpr int pieceValues[] = {0, -100, -300, -310, -500, -900, 0, 0, 0, 100, 300, 310, 500, 900, 0};
+				return popcnt64(toEvaluate.bitboards[piece] & positionValueCenter) * 50 + popcnt64(toEvaluate.bitboards[piece] & positionValueLargeCenter) * 25;
+			};
+
+			int result = 0;
+			result += pieceValue(whitePawn) + positionalValue(whitePawn);
+			result += pieceValue(whiteKnight) + positionalValue(whiteKnight);
+			result += pieceValue(whiteBishop) + positionalValue(whiteBishop);
+			result += pieceValue(whiteRook) + positionalValue(whiteRook);
+			result += pieceValue(whiteQueen) + positionalValue(whiteQueen);
+			result -= pieceValue(blackPawn) + positionalValue(blackPawn);
+			result -= pieceValue(blackKnight) + positionalValue(blackKnight);
+			result -= pieceValue(blackBishop) + positionalValue(blackBishop);
+			result -= pieceValue(blackRook) + positionalValue(blackRook);
+			result -= pieceValue(blackQueen) + positionalValue(blackQueen);
+			return toEvaluate.turn() ? result - toEvaluate.halfMoveClock * 4 : -result + toEvaluate.halfMoveClock * 4;
+		}
 	};
 
 	chess::moveData bestMove(chess::game& gameToTest, const chess::ai::bot& botToUse) {
@@ -275,7 +282,7 @@ namespace chess::ai {
 			int evalType      = decltype(TT)::upperBound;
 
 			moveData bestMove = { 0, 0, 0 };
-            botToUse.orderMoves(legalMoves, TT); // In place sorting of legalMoves
+			botToUse.orderMoves(legalMoves, TT);    // In place sorting of legalMoves
 			for (auto legalMove : legalMoves) {
 				gameToTest.move(legalMove);
 				int posEval = -alphaBeta(alphaBeta, -beta, -alpha, ply - 1, isACapture(legalMove.flags)).eval;

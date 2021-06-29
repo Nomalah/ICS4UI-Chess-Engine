@@ -50,7 +50,7 @@ namespace chess {
 		whiteKing   = 0xE,
 
 		null        = 0x7,
-        occupied    = 0xF
+		occupied    = 0xF
 	};
 
 	enum squareAnnotations : chess::u8
@@ -111,19 +111,19 @@ namespace chess {
 					constexpr chess::u64 vertical { 0x0101010101010101ULL };
 					constexpr chess::u64 diagonal { 0x0102040810204080ULL };
 					constexpr chess::u64 antiDiagonal { 0x8040201008040201ULL };
-                    for (std::size_t y { 0 }; y < 8; y++) {
-                        for (std::size_t x { 0 }; x < 8; x++) {
-                            resultRays[chess::attackRayDirection::north][y * 8 + x] = ((vertical << x) ^ (1ULL << (y * 8 + x))) & (chess::util::constants::bitboardFull << (y * 8));
-                            resultRays[chess::attackRayDirection::south][y * 8 + x] = ((vertical << x) ^ (1ULL << (y * 8 + x))) & ~(chess::util::constants::bitboardFull << (y * 8));
-                            resultRays[chess::attackRayDirection::east][y * 8 + x] = ((horizontal << y * 8) ^ (1ULL << (y * 8 + x))) & ~(chess::util::constants::bitboardFull << (y * 8 + x));
-                            resultRays[chess::attackRayDirection::west][y * 8 + x] = ((horizontal << y * 8) ^ (1ULL << (y * 8 + x))) & (chess::util::constants::bitboardFull << (y * 8 + x));
-                            resultRays[chess::attackRayDirection::northEast][y * 8 + x] = ((x + y > 6 ? diagonal << (8 * (x + y - 7)) : diagonal >> (8 * (7 - x - y))) ^ (1ULL << (y * 8 + x))) & (chess::util::constants::bitboardFull << (y * 8));
-                            resultRays[chess::attackRayDirection::southWest][y * 8 + x] = ((x + y > 6 ? diagonal << (8 * (x + y - 7)) : diagonal >> (8 * (7 - x - y))) ^ (1ULL << (y * 8 + x))) & ~(chess::util::constants::bitboardFull << (y * 8));
-                            resultRays[chess::attackRayDirection::southEast][y * 8 + x] = ((y > x ? antiDiagonal << (8 * (y - x)) : antiDiagonal >> (8 * (x - y))) ^ (1ULL << (y * 8 + x))) & ~(chess::util::constants::bitboardFull << (y * 8 + x));
-                            resultRays[chess::attackRayDirection::northWest][y * 8 + x] = ((y > x ? antiDiagonal << (8 * (y - x)) : antiDiagonal >> (8 * (x - y))) ^ (1ULL << (y * 8 + x))) & (chess::util::constants::bitboardFull << (y * 8 + x));
-                        }
-                    }
-					
+					for (std::size_t y { 0 }; y < 8; y++) {
+						for (std::size_t x { 0 }; x < 8; x++) {
+							resultRays[chess::attackRayDirection::north][y * 8 + x]     = ((vertical << x) ^ (1ULL << (y * 8 + x))) & (chess::util::constants::bitboardFull << (y * 8));
+							resultRays[chess::attackRayDirection::south][y * 8 + x]     = ((vertical << x) ^ (1ULL << (y * 8 + x))) & ~(chess::util::constants::bitboardFull << (y * 8));
+							resultRays[chess::attackRayDirection::east][y * 8 + x]      = ((horizontal << y * 8) ^ (1ULL << (y * 8 + x))) & ~(chess::util::constants::bitboardFull << (y * 8 + x));
+							resultRays[chess::attackRayDirection::west][y * 8 + x]      = ((horizontal << y * 8) ^ (1ULL << (y * 8 + x))) & (chess::util::constants::bitboardFull << (y * 8 + x));
+							resultRays[chess::attackRayDirection::northEast][y * 8 + x] = ((x + y > 6 ? diagonal << (8 * (x + y - 7)) : diagonal >> (8 * (7 - x - y))) ^ (1ULL << (y * 8 + x))) & (chess::util::constants::bitboardFull << (y * 8));
+							resultRays[chess::attackRayDirection::southWest][y * 8 + x] = ((x + y > 6 ? diagonal << (8 * (x + y - 7)) : diagonal >> (8 * (7 - x - y))) ^ (1ULL << (y * 8 + x))) & ~(chess::util::constants::bitboardFull << (y * 8));
+							resultRays[chess::attackRayDirection::southEast][y * 8 + x] = ((y > x ? antiDiagonal << (8 * (y - x)) : antiDiagonal >> (8 * (x - y))) ^ (1ULL << (y * 8 + x))) & ~(chess::util::constants::bitboardFull << (y * 8 + x));
+							resultRays[chess::attackRayDirection::northWest][y * 8 + x] = ((y > x ? antiDiagonal << (8 * (y - x)) : antiDiagonal >> (8 * (x - y))) ^ (1ULL << (y * 8 + x))) & (chess::util::constants::bitboardFull << (y * 8 + x));
+						}
+					}
+
 					return resultRays;
 				}
 
@@ -181,9 +181,9 @@ namespace chess {
 					std::array<std::array<chess::u64, 16>, 64> result {};
 					// Seed the random number generation
 					auto previous = [&time_from_string]() -> chess::u64 {
-						return time_from_string(__TIME__, 0) * 360 /* hours */ 
-                             + time_from_string(__TIME__, 3) * 60 /* minutes */ 
-                             + time_from_string(__TIME__, 6) /* seconds */;
+						return time_from_string(__TIME__, 0) * 360  /* hours */
+						       + time_from_string(__TIME__, 3) * 60 /* minutes */
+						       + time_from_string(__TIME__, 6) /* seconds */;
 					}();
 					for (auto& square : result) {
 						for (auto& piece : square) {
@@ -285,7 +285,7 @@ namespace chess {
 				return result + promotion;
 		}
 	};
-    [[nodiscard]] constexpr bool operator==(const moveData lhs, const moveData rhs){
+	[[nodiscard]] constexpr bool operator==(const moveData lhs, const moveData rhs) {
 		return lhs.originIndex == rhs.originIndex && lhs.destinationIndex == rhs.destinationIndex && lhs.flags == rhs.flags;
 	};
 
@@ -306,7 +306,7 @@ namespace chess {
 		[[nodiscard]] inline T* begin() noexcept { return moves.data(); }
 		[[nodiscard]] inline T* end() noexcept { return insertLocation; }
 		[[nodiscard]] inline chess::u64 size() const noexcept { return static_cast<chess::u64>(insertLocation - moves.data()); }
-        [[nodiscard]] constexpr size_t capacity() const noexcept { return sz; }
+		[[nodiscard]] constexpr size_t capacity() const noexcept { return sz; }
 	};
 
 	struct position {

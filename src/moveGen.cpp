@@ -4,7 +4,7 @@
 
 [[nodiscard]] chess::staticVector<chess::moveData> chess::game::moves() const noexcept {
 	if (this->threeFoldRep() || this->currentPosition().halfMoveClock >= 50) {
-		return staticVector<chess::moveData>{};
+		return staticVector<chess::moveData> {};
 	}
 	// Continue with normal move generation
 	return this->currentPosition().moves();
@@ -81,13 +81,13 @@
 							legalMoves.append({ .originIndex      = blockerLocation,
 							                    .destinationIndex = moveSpot,
 							                    .flags            = static_cast<u16>(allyPawn << 4) });
-                            if (doublePush) {    // double pawn push (only one possible per pawn)
-                                u8 moveSpot { ctz64(doublePush) };
-                                legalMoves.append({ .originIndex      = blockerLocation,
-                                                    .destinationIndex = moveSpot,
-                                                    .flags            = static_cast<u16>((allyColor ? 0x8000 : 0x9000) | (allyPawn << 4)) });
-                            }
-                        }
+							if (doublePush) {    // double pawn push (only one possible per pawn)
+								u8 moveSpot { ctz64(doublePush) };
+								legalMoves.append({ .originIndex      = blockerLocation,
+								                    .destinationIndex = moveSpot,
+								                    .flags            = static_cast<u16>((allyColor ? 0x8000 : 0x9000) | (allyPawn << 4)) });
+							}
+						}
 					}
 				}
 			}
@@ -202,9 +202,9 @@
 		u64 allyPawns { this->bitboards[allyPawn] & ~pinnedPieces };
 		while (allyPawns) {
 			const auto currentAllyPawnIndex { ctz64(allyPawns) };
-            chess::u64 singlePush = this->turn() ? ((1ULL << currentAllyPawnIndex) << 8) & this->empty() : ((1ULL << currentAllyPawnIndex) >> 8) & this->empty();
-            chess::u64 doublePush = this->turn() ? (singlePush << 8) & this->empty() & 0xFF000000ULL : (singlePush >> 8) & this->empty() & 0xFF00000000ULL;
-            chess::u64 capture = this->turn() ? chess::util::constants::pawnAttacks[1][currentAllyPawnIndex] & (this->bitboards[chess::boardAnnotations::black] | this->enPassantTargetSquare) : chess::util::constants::pawnAttacks[0][currentAllyPawnIndex] & (this->bitboards[chess::boardAnnotations::white] | this->enPassantTargetSquare);
+			chess::u64 singlePush = this->turn() ? ((1ULL << currentAllyPawnIndex) << 8) & this->empty() : ((1ULL << currentAllyPawnIndex) >> 8) & this->empty();
+			chess::u64 doublePush = this->turn() ? (singlePush << 8) & this->empty() & 0xFF000000ULL : (singlePush >> 8) & this->empty() & 0xFF00000000ULL;
+			chess::u64 capture    = this->turn() ? chess::util::constants::pawnAttacks[1][currentAllyPawnIndex] & (this->bitboards[chess::boardAnnotations::black] | this->enPassantTargetSquare) : chess::util::constants::pawnAttacks[0][currentAllyPawnIndex] & (this->bitboards[chess::boardAnnotations::white] | this->enPassantTargetSquare);
 			const auto enPassant { capture & this->enPassantTargetSquare };
 			auto notEnPassantCapture { capture ^ enPassant };
 			const auto promotionPush { singlePush & (allyColor == white ? 0xFF00000000000000 : 0xFF) };
@@ -269,14 +269,14 @@
 				legalMoves.append({ .originIndex      = currentAllyPawnIndex,
 				                    .destinationIndex = moveSpot,
 				                    .flags            = static_cast<u16>(allyPawn << 4) });
-                if (doublePush) {    // double pawn push (only one possible per pawn)
-                    const u8 moveSpot { static_cast<u8>(ctz64(doublePush)) };
-                    legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-                                        .destinationIndex = moveSpot,
-                                        .flags            = static_cast<u16>((allyColor ? 0x8000 : 0x9000) | (allyPawn << 4)) });
-                }
-            }
-			
+				if (doublePush) {    // double pawn push (only one possible per pawn)
+					const u8 moveSpot { static_cast<u8>(ctz64(doublePush)) };
+					legalMoves.append({ .originIndex      = currentAllyPawnIndex,
+					                    .destinationIndex = moveSpot,
+					                    .flags            = static_cast<u16>((allyColor ? 0x8000 : 0x9000) | (allyPawn << 4)) });
+				}
+			}
+
 			allyPawns ^= bitboardFromIndex(currentAllyPawnIndex);
 		}
 	} else if (numberOfAttackers == 1) {    // King is in check - no castling - only blocking captures or running
@@ -340,10 +340,10 @@
 		const u64 enPassantTargetSquare_local { this->pieceAtIndex[opponentAttackerLocation] != opponentPawn ? 0 : this->enPassantTargetSquare };    // En passant is only available if the checking piece is a pawn
 		while (allyPawns) {
 			const auto currentAllyPawnIndex { ctz64(allyPawns) };
-            chess::u64 singlePush = this->turn() ? ((1ULL << currentAllyPawnIndex) << 8) & this->empty() : ((1ULL << currentAllyPawnIndex) >> 8) & this->empty();
-            chess::u64 doublePush = this->turn() ? (singlePush << 8) & this->empty() & 0xFF000000ULL : (singlePush >> 8) & this->empty() & 0xFF00000000ULL;
-            chess::u64 capture = this->turn() ? chess::util::constants::pawnAttacks[1][currentAllyPawnIndex] & (this->bitboards[chess::boardAnnotations::black] | this->enPassantTargetSquare) : chess::util::constants::pawnAttacks[0][currentAllyPawnIndex] & (this->bitboards[chess::boardAnnotations::white] | this->enPassantTargetSquare);
-            const auto enPassant                   = capture & enPassantTargetSquare_local;
+			chess::u64 singlePush = this->turn() ? ((1ULL << currentAllyPawnIndex) << 8) & this->empty() : ((1ULL << currentAllyPawnIndex) >> 8) & this->empty();
+			chess::u64 doublePush = this->turn() ? (singlePush << 8) & this->empty() & 0xFF000000ULL : (singlePush >> 8) & this->empty() & 0xFF00000000ULL;
+			chess::u64 capture    = this->turn() ? chess::util::constants::pawnAttacks[1][currentAllyPawnIndex] & (this->bitboards[chess::boardAnnotations::black] | this->enPassantTargetSquare) : chess::util::constants::pawnAttacks[0][currentAllyPawnIndex] & (this->bitboards[chess::boardAnnotations::white] | this->enPassantTargetSquare);
+			const auto enPassant  = capture & enPassantTargetSquare_local;
 			singlePush &= blockMask;
 			doublePush &= blockMask;
 			capture &= captureMask;    // Includes en passant, as there can only be one capture when in check

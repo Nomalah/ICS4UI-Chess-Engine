@@ -18,7 +18,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 	// Remove the piece from it's origin square
 	result.bitboards[chess::util::colorOf(desiredMove.movePiece())] &= ~desiredMove.originSquare();    // Colour only
 	result.bitboards[desiredMove.movePiece()] &= ~desiredMove.originSquare();                          // Colour and Piece
-	result.pieceAtIndex[desiredMove.originIndex] = boardAnnotations::null;       // Set index value to null / Empty
+	result.pieceAtIndex[desiredMove.originIndex] = boardAnnotations::null;                             // Set index value to null / Empty
 	switch (desiredMove.moveFlags()) {
 		case 0x1000:
 			result.halfMoveClock = 0;                                                                                   // Capture

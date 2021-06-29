@@ -6,24 +6,20 @@
 
 int main(int argc, const char* argv[]) {
 	const chess::ai::bot nomalahCustomDesignedBot {
-        chess::ai::botWeights{
-            .moveOrdering = {
-                .pieceValues = {0, 100, 300, 320, 500, 900, 0, 0, 0, 100, 300, 320, 500, 900, 0 },
-                .hashMove = 10000,
-                .notHashMove = 0,
-                .promotionMultiplier = 5,
-                .captureMultiplier = 2,
-                .kingsideCastling = 100,
-                .queensideCastling = 100,
-                .enPassant = 0,
-                .pawnDoublePush = 0,
-                .defaultMove = -100
-            },
-            .evaluate = {
-                .pieceValues = {0, 100, 300, 320, 500, 900, 0, 0, 0, 100, 300, 320, 500, 900, 0 }
-            }
-        }
-    };
+		chess::ai::botWeights {
+			.moveOrdering = {
+				.pieceValues         = { 0, 100, 300, 320, 500, 900, 0, 0, 0, 100, 300, 320, 500, 900, 0 },
+				.hashMove            = 10000,
+				.notHashMove         = 0,
+				.promotionMultiplier = 5,
+				.captureMultiplier   = 2,
+				.kingsideCastling    = 100,
+				.queensideCastling   = 100,
+				.enPassant           = 0,
+				.pawnDoublePush      = 0,
+				.defaultMove         = -100 },
+			.evaluate = { .pieceValues = { 0, 100, 300, 320, 500, 900, 0, 0, 0, 100, 300, 320, 500, 900, 0 } } }
+	};
 
 	// Only supports standard mode
 	chess::game chessGame = chess::defaultGame();
