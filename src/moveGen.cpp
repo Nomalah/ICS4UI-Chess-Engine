@@ -73,110 +73,101 @@ template <chess::boardAnnotations allyColor>
 	u64 pinnedPieces { 0 };
 	if (const auto numberOfAttackers { popcnt64(checkers) }; numberOfAttackers == 0) {    // Not in check
 		// Calculate all pinned pieces
-		auto calculateVerticalPin = [=, &pinnedPieces, &legalMoves, this](const auto rayAttackFunction, const auto findBlockerFunction) {
-			if (const auto rayFromKingToBlocker = rayAttackFunction(allyKingLocation, this->bitboards[occupied]); rayFromKingToBlocker & this->bitboards[allyColor]) {
-				const u8 blockerLocation          = findBlockerFunction(rayFromKingToBlocker);
-				const auto blockerBitboard        = bitboardFromIndex(blockerLocation);
-				const auto rayFromBlockerToPinner = rayAttackFunction(blockerLocation, this->bitboards[occupied]);
-				if (const auto pinningPiece = rayFromBlockerToPinner & (this->bitboards[opponentRook] | this->bitboards[opponentQueen]); pinningPiece) {
-					// The blocker is pinned
-					pinnedPieces |= blockerBitboard;    // Add the pinned pieces to the mask of pinned pieces
-					auto movementMask { (rayFromBlockerToPinner | rayFromKingToBlocker) ^ blockerBitboard };
-					if (this->pieceAtIndex[blockerLocation] == allyRook || this->pieceAtIndex[blockerLocation] == allyQueen) {
-						while (movementMask) {
-							const auto moveSpot      = ctz64(movementMask);
-							const auto capturedPiece = this->pieceAtIndex[moveSpot];
+		auto calculateVerticalPin = [=, &pinnedPieces, &legalMoves, this](const auto attackFunction) {
+			const auto ray = attackFunction(allyKingLocation, this->bitboards[opponentColor]);
+			if (ray & (this->bitboards[opponentRook] | this->bitboards[opponentQueen]) && popcnt64(ray & this->bitboards[allyColor]) == 1) {    // If there is one ally piece inbetween, it's pinned
+				pinnedPieces |= ray & this->bitboards[allyColor];
+				auto movementMask { ray & notAlly };
+				auto blockerLocation { ctz64(ray & this->bitboards[allyColor]) };
+				if (ray & (this->bitboards[allyRook] | ray & this->bitboards[allyQueen])) {
+					while (movementMask) {
+						const auto moveSpot      = ctz64(movementMask);
+						const auto capturedPiece = this->pieceAtIndex[moveSpot];
+						legalMoves.append({ .originIndex      = blockerLocation,
+						                    .destinationIndex = moveSpot,
+						                    .flags            = static_cast<u16>(getCaptureFlag(capturedPiece) | (this->pieceAtIndex[blockerLocation] << 4) | capturedPiece) });
+						zeroLSB(movementMask);
+					}
+				} else if (ray & this->bitboards[allyPawn]) {
+					chess::u64 singlePush = allyColor == white ? ((1ULL << blockerLocation) << 8) & this->empty() : ((1ULL << blockerLocation) >> 8) & this->empty();
+					chess::u64 doublePush = allyColor == white ? (singlePush << 8) & this->empty() & 0xFF000000ULL : (singlePush >> 8) & this->empty() & 0xFF00000000ULL;
+					if (singlePush) {    // not double pawn push
+						auto moveSpot { ctz64(singlePush) };
+						legalMoves.append({ .originIndex      = blockerLocation,
+						                    .destinationIndex = moveSpot,
+						                    .flags            = static_cast<u16>(allyPawn << 4) });
+						if (doublePush) {    // double pawn push (only one possible per pawn)
+							u8 moveSpot { ctz64(doublePush) };
 							legalMoves.append({ .originIndex      = blockerLocation,
 							                    .destinationIndex = moveSpot,
-							                    .flags            = static_cast<u16>(getCaptureFlag(capturedPiece) | (this->pieceAtIndex[blockerLocation] << 4) | capturedPiece) });
-							zeroLSB(movementMask);
-						}
-					} else if (this->pieceAtIndex[blockerLocation] == allyPawn) {
-						chess::u64 singlePush = allyColor == white ? ((1ULL << blockerLocation) << 8) & this->empty() : ((1ULL << blockerLocation) >> 8) & this->empty();
-						chess::u64 doublePush = allyColor == white ? (singlePush << 8) & this->empty() & 0xFF000000ULL : (singlePush >> 8) & this->empty() & 0xFF00000000ULL;
-						if (singlePush) {    // not double pawn push
-							auto moveSpot { ctz64(singlePush) };
-							legalMoves.append({ .originIndex      = blockerLocation,
-							                    .destinationIndex = moveSpot,
-							                    .flags            = static_cast<u16>(allyPawn << 4) });
-							if (doublePush) {    // double pawn push (only one possible per pawn)
-								u8 moveSpot { ctz64(doublePush) };
-								legalMoves.append({ .originIndex      = blockerLocation,
-								                    .destinationIndex = moveSpot,
-								                    .flags            = static_cast<u16>((allyColor ? 0x8000 : 0x9000) | (allyPawn << 4)) });
-							}
+							                    .flags            = static_cast<u16>((allyColor ? 0x8000 : 0x9000) | (allyPawn << 4)) });
 						}
 					}
 				}
 			}
 		};
 
-		auto calculateHorizontalPin = [=, &pinnedPieces, &legalMoves, this](const auto rayAttackFunction, const auto findBlockerFunction) {
-			if (const auto rayFromKingToBlocker = rayAttackFunction(allyKingLocation, this->bitboards[occupied]); rayFromKingToBlocker & this->bitboards[allyColor]) {    // If the blocker is an ally, it might be pinned
-				const u8 blockerLocation { findBlockerFunction(rayFromKingToBlocker) };
-				const auto blockerBitboard { bitboardFromIndex(blockerLocation) };
-				const auto rayFromBlockerToPinner { rayAttackFunction(blockerLocation, this->bitboards[occupied]) };
-				if (const auto pinningPiece { rayFromBlockerToPinner & (this->bitboards[opponentRook] | this->bitboards[opponentQueen]) }; pinningPiece) {
-					pinnedPieces |= blockerBitboard;
-					auto movementMask { (rayFromBlockerToPinner | rayFromKingToBlocker) ^ blockerBitboard };
-					if (this->pieceAtIndex[blockerLocation] == allyRook || this->pieceAtIndex[blockerLocation] == allyQueen) {
-						while (movementMask) {
-							const auto moveSpot { ctz64(movementMask) };
-							const auto capturedPiece { this->pieceAtIndex[moveSpot] };
-							legalMoves.append({ .originIndex      = blockerLocation,
-							                    .destinationIndex = moveSpot,
-							                    .flags            = static_cast<u16>(getCaptureFlag(capturedPiece) | (this->pieceAtIndex[blockerLocation] << 4) | capturedPiece) });
-							zeroLSB(movementMask);
-						}
+		auto calculateHorizontalPin = [=, &pinnedPieces, &legalMoves, this](const auto attackFunction) {
+			const auto ray = attackFunction(allyKingLocation, this->bitboards[opponentColor]);
+			if (ray & (this->bitboards[opponentRook] | this->bitboards[opponentQueen]) && popcnt64(ray & this->bitboards[allyColor]) == 1) {    // If there is one ally piece inbetween, it's pinned
+				pinnedPieces |= ray & this->bitboards[allyColor];
+				auto movementMask { ray & notAlly };
+				auto blockerLocation { ctz64(ray & this->bitboards[allyColor]) };
+				if (this->pieceAtIndex[blockerLocation] == allyRook || this->pieceAtIndex[blockerLocation] == allyQueen) {
+					while (movementMask) {
+						const auto moveSpot { ctz64(movementMask) };
+						const auto capturedPiece { this->pieceAtIndex[moveSpot] };
+						legalMoves.append({ .originIndex      = blockerLocation,
+						                    .destinationIndex = moveSpot,
+						                    .flags            = static_cast<u16>(getCaptureFlag(capturedPiece) | (this->pieceAtIndex[blockerLocation] << 4) | capturedPiece) });
+						zeroLSB(movementMask);
 					}
 				}
 			}
 		};
-		auto calculateDiagonalPin = [=, &pinnedPieces, &legalMoves, this](const auto rayAttackFunction, const auto findBlockerFunction) {
-			if (const auto rayFromKingToBlocker = rayAttackFunction(allyKingLocation, this->bitboards[occupied]); rayFromKingToBlocker & this->bitboards[allyColor]) {    // If the blocker is an ally, it might be pinned
-				const u8 blockerLocation { findBlockerFunction(rayFromKingToBlocker) };
-				const auto blockerBitboard { bitboardFromIndex(blockerLocation) };
-				const auto rayFromBlocker { rayAttackFunction(blockerLocation, this->bitboards[occupied]) };
-				if (const auto pinningPiece { rayFromBlocker & (this->bitboards[opponentBishop] | this->bitboards[opponentQueen]) }; pinningPiece) {    // Bishops and Queens can pin on a diagonal
-					pinnedPieces |= blockerBitboard;                                                                                                    // Remove the piece from the rest of move generation
-					auto movementMask { (rayFromBlocker | rayFromKingToBlocker) ^ blockerBitboard };                                                    // The ray includes the blocker, but not the attacker, which means our blocker must be removed from our movement mask
-					if (this->pieceAtIndex[blockerLocation] == allyBishop || this->pieceAtIndex[blockerLocation] == allyQueen) {
-						while (movementMask) {
-							const auto moveSpot { ctz64(movementMask) };
-							const auto capturedPiece { this->pieceAtIndex[moveSpot] };
-							legalMoves.append({ .originIndex      = blockerLocation,
-							                    .destinationIndex = moveSpot,
-							                    .flags            = static_cast<u16>(getCaptureFlag(capturedPiece) | (this->pieceAtIndex[blockerLocation] << 4) | capturedPiece) });
-							zeroLSB(movementMask);
-						}
-					} else if (this->pieceAtIndex[blockerLocation] == allyPawn) {
-						const chess::u64 capture = pawnAttacks[allyColor >> 3][blockerLocation] & (this->bitboards[opponentColor] | this->enPassantTargetSquare) & movementMask;
-						// Only one capture is allowed when pinned
-						if (capture & this->enPassantTargetSquare) {
-							// enPassant is possible if pinned
-							const auto moveSpot { ctz64(this->enPassantTargetSquare) };
-							legalMoves.append({ .originIndex      = blockerLocation,
-							                    .destinationIndex = moveSpot,
-							                    .flags            = static_cast<u16>((allyColor ? 0x6000 : 0x7000) | (allyPawn << 4)) });
-						} else if (capture) {
-							const auto moveSpot { ctz64(capture) };
-							legalMoves.append({ .originIndex      = blockerLocation,
-							                    .destinationIndex = moveSpot,
-							                    .flags            = static_cast<u16>(0x1000 | (allyPawn << 4) | this->pieceAtIndex[moveSpot]) });
-						}
+		auto calculateDiagonalPin = [=, &pinnedPieces, &legalMoves, this](const auto attackFunction) {
+			const auto ray = attackFunction(allyKingLocation, this->bitboards[opponentColor]);
+			if (ray & (this->bitboards[opponentBishop] | this->bitboards[opponentQueen]) && popcnt64(ray & this->bitboards[allyColor]) == 1) {    // If there is one ally piece inbetween, it's pinned
+				pinnedPieces |= ray & this->bitboards[allyColor];
+				auto movementMask { ray & notAlly };
+				auto blockerLocation { ctz64(ray & this->bitboards[allyColor]) };
+				if (this->pieceAtIndex[blockerLocation] == allyBishop || this->pieceAtIndex[blockerLocation] == allyQueen) {
+					while (movementMask) {
+						const auto moveSpot { ctz64(movementMask) };
+						const auto capturedPiece { this->pieceAtIndex[moveSpot] };
+						legalMoves.append({ .originIndex      = blockerLocation,
+						                    .destinationIndex = moveSpot,
+						                    .flags            = static_cast<u16>(getCaptureFlag(capturedPiece) | (this->pieceAtIndex[blockerLocation] << 4) | capturedPiece) });
+						zeroLSB(movementMask);
+					}
+				} else if (this->pieceAtIndex[blockerLocation] == allyPawn) {
+					const chess::u64 capture = pawnAttacks[allyColor >> 3][blockerLocation] & (this->bitboards[opponentColor] | this->enPassantTargetSquare) & movementMask;
+					// Only one capture is allowed when pinned
+					if (capture & this->enPassantTargetSquare) {
+						// enPassant is possible if pinned
+						const auto moveSpot { ctz64(this->enPassantTargetSquare) };
+						legalMoves.append({ .originIndex      = blockerLocation,
+						                    .destinationIndex = moveSpot,
+						                    .flags            = static_cast<u16>((allyColor ? 0x6000 : 0x7000) | (allyPawn << 4)) });
+					} else if (capture) {
+						const auto moveSpot { ctz64(capture) };
+						legalMoves.append({ .originIndex      = blockerLocation,
+						                    .destinationIndex = moveSpot,
+						                    .flags            = static_cast<u16>(0x1000 | (allyPawn << 4) | this->pieceAtIndex[moveSpot]) });
 					}
 				}
 			}
 		};
-		calculateVerticalPin(&chess::util::positiveRayAttacks<north>, [](auto bitboard) -> u8 { return 63U - clz64(bitboard); });
-		calculateVerticalPin(&chess::util::negativeRayAttacks<south>, [](auto bitboard) -> u8 { return ctz64(bitboard); });
-		calculateHorizontalPin(&chess::util::positiveRayAttacks<west>, [](auto bitboard) -> u8 { return 63U - clz64(bitboard); });
-		calculateHorizontalPin(&chess::util::negativeRayAttacks<east>, [](auto bitboard) -> u8 { return ctz64(bitboard); });
 
-		calculateDiagonalPin(&chess::util::positiveRayAttacks<northWest>, [](auto bitboard) -> u8 { return 63U - clz64(bitboard); });
-		calculateDiagonalPin(&chess::util::positiveRayAttacks<northEast>, [](auto bitboard) -> u8 { return 63U - clz64(bitboard); });
-		calculateDiagonalPin(&chess::util::negativeRayAttacks<southWest>, [](auto bitboard) -> u8 { return ctz64(bitboard); });
-		calculateDiagonalPin(&chess::util::negativeRayAttacks<southEast>, [](auto bitboard) -> u8 { return ctz64(bitboard); });
+		calculateVerticalPin(rayAttack<north>);
+		calculateVerticalPin(rayAttack<south>);
+		calculateHorizontalPin(rayAttack<west>);
+		calculateHorizontalPin(rayAttack<east>);
+
+		calculateDiagonalPin(rayAttack<northWest>);
+		calculateDiagonalPin(rayAttack<northEast>);
+		calculateDiagonalPin(rayAttack<southWest>);
+		calculateDiagonalPin(rayAttack<southEast>);
 
 		generatePieceMoves<allyKnight>(*this, legalMoves, pinnedPieces, notAlly);
 		generatePieceMoves<allyRook>(*this, legalMoves, pinnedPieces, notAlly);
