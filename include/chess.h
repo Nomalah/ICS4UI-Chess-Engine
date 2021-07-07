@@ -92,9 +92,6 @@ namespace chess {
 			}
 		}
 		[[nodiscard]] constexpr u64 bitboardFromIndex(const u8 index) { return 1ULL << index; };
-		[[nodiscard]] constexpr chess::boardAnnotations oppositeTurn(const chess::boardAnnotations piece) noexcept {
-			return static_cast<chess::boardAnnotations>(piece ^ 0x8);
-		}
 
 		namespace constants {
 
@@ -235,12 +232,23 @@ namespace chess {
 #endif
 		}
 
+        // Expand to intergral types
+        inline u64 zeroLSB(u64& bitboard) noexcept {
+			return bitboard &= bitboard - 1; // Should become the BLSR instruction on x86
+		}
+
 		// Functions to modify board/piece annotations
 		[[nodiscard]] constexpr chess::boardAnnotations colorOf(const chess::boardAnnotations piece) noexcept {
 			return static_cast<chess::boardAnnotations>(piece & 0x08);
 		}
-		[[nodiscard]] constexpr chess::boardAnnotations oppositeColorOf(const chess::boardAnnotations piece) noexcept {
-			return static_cast<chess::boardAnnotations>(piece ^ 0x08);
+        [[nodiscard]] constexpr chess::boardAnnotations getPieceOf(const chess::boardAnnotations piece) noexcept {
+			return static_cast<chess::boardAnnotations>(piece & 0x07);
+		}
+		[[nodiscard]] constexpr chess::boardAnnotations operator~(const chess::boardAnnotations piece) noexcept {
+			return static_cast<chess::boardAnnotations>(piece ^ chess::boardAnnotations::white);
+		}
+		[[nodiscard]] constexpr chess::attackRayDirection operator~(const chess::attackRayDirection direction) noexcept {
+			return static_cast<chess::attackRayDirection>(direction ^ chess::attackRayDirection::south);
 		}
 
 		[[nodiscard]] constexpr chess::u16 getCaptureFlag(chess::boardAnnotations piece) { return piece != null ? 0x1000 : 0x0000; };
@@ -263,6 +271,15 @@ namespace chess {
 			chess::u64 blocker { (attacks & occupiedSquares) | 0x1 };
 			attacks ^= chess::util::constants::attackRays[direction][63U - chess::util::clz64(blocker)];
 			return attacks;
+		}
+
+		template <chess::attackRayDirection direction>
+		[[nodiscard]] constexpr chess::u64 rayAttack(const chess::u8 squareFrom, const chess::u64 occupiedSquares) noexcept {
+			if constexpr (chess::attackRayDirection::north == direction || chess::attackRayDirection::northWest == direction || chess::attackRayDirection::west == direction || chess::attackRayDirection::northEast == direction){
+				return positiveRayAttacks<direction>(squareFrom, occupiedSquares);
+			} else {
+                return negativeRayAttacks<direction>(squareFrom, occupiedSquares);
+            }
 		}
 	}    // namespace util
 
@@ -319,39 +336,39 @@ namespace chess {
 		chess::u64 enPassantTargetSquare;
 		chess::u64 zobristHash;
 
+		template <chess::boardAnnotations allyColor>
 		[[nodiscard]] staticVector<moveData> moves() const noexcept;
 		[[nodiscard]] position move(moveData desiredMove) const noexcept;
-		[[nodiscard]] chess::u64 attacks(const chess::boardAnnotations turn) const noexcept;
-		[[nodiscard]] chess::u64 attackers(const chess::squareAnnotations square, const chess::boardAnnotations attackingColor) const noexcept;
+		template <chess::boardAnnotations attackingColor>
+		[[nodiscard]] chess::u64 attacks() const noexcept;
+		template <chess::boardAnnotations attackingColor>
+		[[nodiscard]] chess::u64 attackers(const chess::squareAnnotations square) const noexcept;
 		template <chess::boardAnnotations piece>
-		[[nodiscard]] inline chess::u64 pieceMoves(const u8 squareFrom) const noexcept { return chess::u64 {}; };
+		[[nodiscard]] inline chess::u64 pieceMoves(const u8 squareFrom, const u64 occupied) const noexcept { return chess::u64 {}; };
 		template <>
-		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::bishop>(const chess::u8 squareFrom) const noexcept {
-			const auto occupied { this->occupied() };
+		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::bishop>(const chess::u8 squareFrom, const u64 occupied) const noexcept {
 			return chess::util::positiveRayAttacks<chess::northWest>(squareFrom, occupied) | chess::util::positiveRayAttacks<chess::northEast>(squareFrom, occupied) | chess::util::negativeRayAttacks<chess::southWest>(squareFrom, occupied) | chess::util::negativeRayAttacks<chess::southEast>(squareFrom, occupied);
 		}
 		template <>
-		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::rook>(const chess::u8 squareFrom) const noexcept {
-			const auto occupied { this->occupied() };
+		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::rook>(const chess::u8 squareFrom, const u64 occupied) const noexcept {
 			return chess::util::positiveRayAttacks<chess::north>(squareFrom, occupied) | chess::util::positiveRayAttacks<chess::west>(squareFrom, occupied) | chess::util::negativeRayAttacks<chess::south>(squareFrom, occupied) | chess::util::negativeRayAttacks<chess::east>(squareFrom, occupied);
 		}
 		template <>
-		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::knight>(const chess::u8 squareFrom) const noexcept {
+		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::knight>(const chess::u8 squareFrom, const u64 occupied) const noexcept {
 			return chess::util::constants::knightJumps[squareFrom];
 		}
 		template <>
-		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::queen>(const chess::u8 squareFrom) const noexcept {
-			return this->pieceMoves<chess::boardAnnotations::rook>(squareFrom) | this->pieceMoves<chess::boardAnnotations::bishop>(squareFrom);
+		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::queen>(const chess::u8 squareFrom, const u64 occupied) const noexcept {
+			return this->pieceMoves<chess::boardAnnotations::rook>(squareFrom, occupied) | this->pieceMoves<chess::boardAnnotations::bishop>(squareFrom, occupied);
 		}
 		template <>
-		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::king>(const chess::u8 squareFrom) const noexcept {
+		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::king>(const chess::u8 squareFrom, const u64 occupied) const noexcept {
 			return chess::util::constants::kingAttacks[squareFrom];
 		}
 
 		[[nodiscard]] std::string ascii() const noexcept;
 		[[nodiscard]] constexpr chess::boardAnnotations turn() const noexcept { return static_cast<chess::boardAnnotations>(flags & 0x08); }    // 0 - 1 (1 bit)
-		[[nodiscard]] constexpr chess::u64 occupied() const noexcept { return bitboards[chess::boardAnnotations::occupied]; }
-		[[nodiscard]] constexpr chess::u64 empty() const noexcept { return ~occupied(); }
+		[[nodiscard]] constexpr chess::u64 empty() const noexcept { return ~bitboards[chess::boardAnnotations::occupied]; }
 		[[nodiscard]] constexpr bool valid() const noexcept { return flags & 0x04; }    // 0 - 1 (1 bit)
 		[[nodiscard]] constexpr bool castleWK() const noexcept { return flags & 0x80; }
 		[[nodiscard]] constexpr bool castleWQ() const noexcept { return flags & 0x40; }
@@ -379,6 +396,8 @@ namespace chess {
 		game(const std::string& fen) noexcept :
 			gameHistory { { chess::position::fromFen(fen) } } {}
 
+		[[nodiscard]] staticVector<moveData> moves() const noexcept;
+		template <chess::boardAnnotations allyColor>
 		[[nodiscard]] staticVector<moveData> moves() const noexcept;
 		[[nodiscard]] constexpr u8 result() const noexcept { return 0; };    // unused
 		[[nodiscard]] constexpr bool finished() const noexcept { return this->threeFoldRep() || this->moves().size() == 0; }
