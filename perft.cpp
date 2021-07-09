@@ -29,7 +29,6 @@ struct perftResult {
 	size_t promotions;
 };
 
-template <bool individualTest>
 perftResult perft(size_t testDepth, const std::string& fen) {
 	chess::game gameToTest(fen);
 	perftResult result = { 0, {}, 0 };
@@ -69,11 +68,6 @@ perftResult perft(size_t testDepth, const std::string& fen) {
             TIME(gameToTest.move(validMove), moveTime);
             nodes += perftTest(perftTest, depth - 1);
             TIME(gameToTest.undo(), undoTime);
-        }
-        if (individualTest) {
-            if ((nodes & 255) == 255) {
-                std::cout << "\u001b[34m[.moves()]:[" << (movesTime.totalTime / movesTime.totalRuns) << "ns/iter]:[" << movesTime.totalRuns << "iters]\u001b[0m\r";
-            }
         }
         return nodes;
 	};
@@ -131,26 +125,22 @@ int main(int argc, const char* argv[]) {
 	};
 
 	if (argc == 3) {
-		do {
-			std::string fen = argv[1];
-			if (fen.length() <= 2) {
-				std::cout << "\u001b[31mImproper fen string was given - running default tests\n";
-				break;
-			}
-			chess::position testPosition = chess::position::fromFen(fen);
-			std::cout << "\u001b[34m[Test]@Position=" << fen << std::endl;
-			std::cout << "\u001b[33m" << testPosition.ascii() << "\u001b[34m" << std::endl;
-			perftResult testResult = perft<true>(std::stoull(argv[2]), fen);
-			std::cout << '\n';
-			for (auto& [move, total] : testResult.moves) {
-				std::cout << "\t[" << move.toString() << "]:[" << total << "]\n";
-			}
-			std::cout << "[Total Nodes Visited]:[" << testResult.total << "]\u001b[0m\n";
-			return 0;
-		} while (false);
-	} else {
-		std::cout << "\u001b[31mImproper or no arguments were given - running default tests" << std::endl;
+		std::string fen              = argv[1];
+		chess::position testPosition = chess::position::fromFen(fen);
+		std::cout << "\u001b[34m[Test]@Position=" << fen << std::endl;
+		std::cout << "\u001b[33m" << testPosition.ascii() << "\u001b[34m" << std::endl;
+		auto startTime         = std::chrono::high_resolution_clock::now();
+		perftResult testResult = perft(std::stoull(argv[2]), fen);
+		auto endTime           = std::chrono::high_resolution_clock::now();
+		auto duration          = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+		for (auto& [move, total] : testResult.moves) {
+			std::cout << "\t[" << move.toString() << "]:[" << total << "]\n";
+		}
+		std::cout << "[Total Nodes Visited]:[" << testResult.total << "] [Test Duration]:[" << duration << "ms]\u001b[0m\n";
+		return 0;
 	}
+
+	std::cout << "\u001b[31mImproper or no arguments were given - running default tests" << std::endl;
 
 	size_t totalTests  = 0;
 	size_t passedTests = 0;
@@ -159,7 +149,7 @@ int main(int argc, const char* argv[]) {
 		std::cout << "\u001b[34m[Test]@Position=" << test.testFen << std::endl;
 		for (const perftTestResult& knownTestResult : test.testList) {
 			auto startTime         = std::chrono::high_resolution_clock::now();
-			perftResult testResult = perft<false>(knownTestResult.depth, test.testFen);
+			perftResult testResult = perft(knownTestResult.depth, test.testFen);
 			auto endTime           = std::chrono::high_resolution_clock::now();
 			auto duration          = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
 			if (testResult.total != knownTestResult.nodes) {
