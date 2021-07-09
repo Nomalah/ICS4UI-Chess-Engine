@@ -7,10 +7,12 @@
 
 namespace chess {
 	// Types used in the chess engine
-	typedef unsigned long long u64;
 	typedef unsigned char u8;
 	typedef unsigned short u16;
 	typedef unsigned int u32;
+	typedef unsigned long long u64;
+	static_assert(sizeof(u8) == 1 && sizeof(u16) == 2 && sizeof(u32) == 4 && sizeof(u64));
+    
 	enum attackRayDirection : chess::u8
 	{
 		north     = 0,
