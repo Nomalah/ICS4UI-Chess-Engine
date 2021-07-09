@@ -4,9 +4,9 @@
 
 [[nodiscard]] chess::staticVector<chess::moveData> chess::game::moves() const noexcept {
 	// Continue with normal move generation
-    if(this->currentPosition().turn() == white){
-	    return this->currentPosition().moves<white>();
-    }else{
+	if (this->currentPosition().turn() == white) {
+		return this->currentPosition().moves<white>();
+	} else {
 		return this->currentPosition().moves<black>();
 	}
 }
@@ -21,17 +21,17 @@ template <chess::boardAnnotations allyColor>
 }
 
 template <chess::boardAnnotations piece>
-inline void generatePieceMoves(const chess::position& positionS, chess::staticVector<chess::moveData>& legalMoves, const chess::u64 pinnedPieces, const chess::u64 notAlly, const chess::u64 mask = chess::util::constants::bitboardFull) noexcept {
-	chess::u64 allyPieces { positionS.bitboards[piece] & ~pinnedPieces };    // Pieces that are not pinned
+void chess::position::generatePieceMoves(chess::staticVector<chess::moveData>& legalMoves, const chess::u64 pinnedPieces, const chess::u64 notAlly, const chess::u64 mask) const noexcept {
+	chess::u64 allyPieces { this->bitboards[piece] & ~pinnedPieces };    // Pieces that are not pinned
 	while (allyPieces) {
 		const chess::u8 currentAllyPieceIndex { chess::util::ctz64(allyPieces) };
-		chess::u64 allyPieceMoves { positionS.pieceMoves<chess::util::getPieceOf(piece)>(currentAllyPieceIndex, positionS.bitboards[chess::boardAnnotations::occupied]) & notAlly & mask };
+		chess::u64 allyPieceMoves { this->pieceMoves<chess::util::getPieceOf(piece)>(currentAllyPieceIndex, this->bitboards[chess::boardAnnotations::occupied]) & notAlly & mask };
 		while (allyPieceMoves) {
 			const auto destinationSquare { chess::util::ctz64(allyPieceMoves) };
-			const auto destinationPiece { positionS.pieceAtIndex[destinationSquare] };
-			legalMoves.append({ .originIndex      = currentAllyPieceIndex,
-			                    .destinationIndex = destinationSquare,
-			                    .flags            = static_cast<chess::u16>(chess::util::getCaptureFlag(destinationPiece) | (piece << 4) | destinationPiece) });
+			const auto destinationPiece { this->pieceAtIndex[destinationSquare] };
+			legalMoves.append({ .flags            = static_cast<chess::u16>(chess::util::getCaptureFlag(destinationPiece) | (piece << 4) | destinationPiece),
+			                    .originIndex      = currentAllyPieceIndex,
+			                    .destinationIndex = destinationSquare });
 			chess::util::zeroLSB(allyPieceMoves);
 		}
 		chess::util::zeroLSB(allyPieces);
@@ -63,10 +63,10 @@ template <chess::boardAnnotations allyColor>
 
 	const squareAnnotations allyKingLocation { ctz64(this->bitboards[allyKing]) };
 
-    // Start with knights and pawns, and then add sliders, as they can pin.
+	// Start with knights and pawns, and then add sliders, as they can pin.
 	u64 checkers = (this->pieceMoves<knight>(allyKingLocation, this->bitboards[occupied]) & this->bitboards[opponentKnight]) |
-	               (pawnAttacks[allyColor >> 3][allyKingLocation] & this->bitboards[opponentPawn]) | 
-                   (this->pieceMoves<bishop>(allyKingLocation, this->bitboards[occupied]) & (this->bitboards[opponentBishop] | this->bitboards[opponentQueen])) |
+	               (pawnAttacks[allyColor >> 3][allyKingLocation] & this->bitboards[opponentPawn]) |
+	               (this->pieceMoves<bishop>(allyKingLocation, this->bitboards[occupied]) & (this->bitboards[opponentBishop] | this->bitboards[opponentQueen])) |
 	               (this->pieceMoves<rook>(allyKingLocation, this->bitboards[occupied]) & (this->bitboards[opponentRook] | this->bitboards[opponentQueen]));
 
 	const u64 notAttackedByOpponent { ~this->attacks<opponentColor>() };
@@ -83,9 +83,9 @@ template <chess::boardAnnotations allyColor>
 					while (movementMask) {
 						const auto moveSpot      = ctz64(movementMask);
 						const auto capturedPiece = this->pieceAtIndex[moveSpot];
-						legalMoves.append({ .originIndex      = blockerLocation,
-						                    .destinationIndex = moveSpot,
-						                    .flags            = static_cast<u16>(getCaptureFlag(capturedPiece) | (this->pieceAtIndex[blockerLocation] << 4) | capturedPiece) });
+						legalMoves.append({ .flags            = static_cast<u16>(getCaptureFlag(capturedPiece) | (this->pieceAtIndex[blockerLocation] << 4) | capturedPiece),
+						                    .originIndex      = blockerLocation,
+						                    .destinationIndex = moveSpot });
 						zeroLSB(movementMask);
 					}
 				} else if (ray & this->bitboards[allyPawn]) {
@@ -93,14 +93,14 @@ template <chess::boardAnnotations allyColor>
 					chess::u64 doublePush = allyColor == white ? (singlePush << 8) & this->empty() & 0xFF000000ULL : (singlePush >> 8) & this->empty() & 0xFF00000000ULL;
 					if (singlePush) {    // not double pawn push
 						auto moveSpot { ctz64(singlePush) };
-						legalMoves.append({ .originIndex      = blockerLocation,
-						                    .destinationIndex = moveSpot,
-						                    .flags            = static_cast<u16>(allyPawn << 4) });
+						legalMoves.append({ .flags            = static_cast<u16>(allyPawn << 4),
+						                    .originIndex      = blockerLocation,
+						                    .destinationIndex = moveSpot });
 						if (doublePush) {    // double pawn push (only one possible per pawn)
 							u8 moveSpot { ctz64(doublePush) };
-							legalMoves.append({ .originIndex      = blockerLocation,
-							                    .destinationIndex = moveSpot,
-							                    .flags            = static_cast<u16>((allyColor ? 0x8000 : 0x9000) | (allyPawn << 4)) });
+							legalMoves.append({ .flags            = static_cast<u16>((allyColor ? 0x8000 : 0x9000) | (allyPawn << 4)),
+							                    .originIndex      = blockerLocation,
+							                    .destinationIndex = moveSpot });
 						}
 					}
 				}
@@ -117,9 +117,9 @@ template <chess::boardAnnotations allyColor>
 					while (movementMask) {
 						const auto moveSpot { ctz64(movementMask) };
 						const auto capturedPiece { this->pieceAtIndex[moveSpot] };
-						legalMoves.append({ .originIndex      = blockerLocation,
-						                    .destinationIndex = moveSpot,
-						                    .flags            = static_cast<u16>(getCaptureFlag(capturedPiece) | (this->pieceAtIndex[blockerLocation] << 4) | capturedPiece) });
+						legalMoves.append({ .flags            = static_cast<u16>(getCaptureFlag(capturedPiece) | (this->pieceAtIndex[blockerLocation] << 4) | capturedPiece),
+						                    .originIndex      = blockerLocation,
+						                    .destinationIndex = moveSpot });
 						zeroLSB(movementMask);
 					}
 				}
@@ -135,9 +135,9 @@ template <chess::boardAnnotations allyColor>
 					while (movementMask) {
 						const auto moveSpot { ctz64(movementMask) };
 						const auto capturedPiece { this->pieceAtIndex[moveSpot] };
-						legalMoves.append({ .originIndex      = blockerLocation,
-						                    .destinationIndex = moveSpot,
-						                    .flags            = static_cast<u16>(getCaptureFlag(capturedPiece) | (this->pieceAtIndex[blockerLocation] << 4) | capturedPiece) });
+						legalMoves.append({ .flags            = static_cast<u16>(getCaptureFlag(capturedPiece) | (this->pieceAtIndex[blockerLocation] << 4) | capturedPiece),
+						                    .originIndex      = blockerLocation,
+						                    .destinationIndex = moveSpot });
 						zeroLSB(movementMask);
 					}
 				} else if (this->pieceAtIndex[blockerLocation] == allyPawn) {
@@ -146,14 +146,14 @@ template <chess::boardAnnotations allyColor>
 					if (capture & this->enPassantTargetSquare) {
 						// enPassant is possible if pinned
 						const auto moveSpot { ctz64(this->enPassantTargetSquare) };
-						legalMoves.append({ .originIndex      = blockerLocation,
-						                    .destinationIndex = moveSpot,
-						                    .flags            = static_cast<u16>((allyColor ? 0x6000 : 0x7000) | (allyPawn << 4)) });
+						legalMoves.append({ .flags            = static_cast<u16>((allyColor ? 0x6000 : 0x7000) | (allyPawn << 4)),
+						                    .originIndex      = blockerLocation,
+						                    .destinationIndex = moveSpot });
 					} else if (capture) {
 						const auto moveSpot { ctz64(capture) };
-						legalMoves.append({ .originIndex      = blockerLocation,
-						                    .destinationIndex = moveSpot,
-						                    .flags            = static_cast<u16>(0x1000 | (allyPawn << 4) | this->pieceAtIndex[moveSpot]) });
+						legalMoves.append({ .flags            = static_cast<u16>(0x1000 | (allyPawn << 4) | this->pieceAtIndex[moveSpot]),
+						                    .originIndex      = blockerLocation,
+						                    .destinationIndex = moveSpot });
 					}
 				}
 			}
@@ -169,39 +169,39 @@ template <chess::boardAnnotations allyColor>
 		calculateDiagonalPin(rayAttack<southWest>);
 		calculateDiagonalPin(rayAttack<southEast>);
 
-		generatePieceMoves<allyKnight>(*this, legalMoves, pinnedPieces, notAlly);
-		generatePieceMoves<allyRook>(*this, legalMoves, pinnedPieces, notAlly);
-		generatePieceMoves<allyBishop>(*this, legalMoves, pinnedPieces, notAlly);
-		generatePieceMoves<allyQueen>(*this, legalMoves, pinnedPieces, notAlly);
-		
+		generatePieceMoves<allyKnight>(legalMoves, pinnedPieces, notAlly);
+		generatePieceMoves<allyRook>(legalMoves, pinnedPieces, notAlly);
+		generatePieceMoves<allyBishop>(legalMoves, pinnedPieces, notAlly);
+		generatePieceMoves<allyQueen>(legalMoves, pinnedPieces, notAlly);
+
 		if constexpr (allyColor == white) {
 			if (this->castleWK()) {
 				if (!(this->bitboards[occupied] & (bitboardFromIndex(g1) | bitboardFromIndex(f1))) && (notAttackedByOpponent & bitboardFromIndex(f1)) && (notAttackedByOpponent & bitboardFromIndex(g1))) {
-					legalMoves.append({ .originIndex      = e1,
-					                    .destinationIndex = g1,
-					                    .flags            = static_cast<u16>(0x2000 | (whiteKing << 4)) });
+					legalMoves.append({ .flags            = static_cast<u16>(0x2000 | (whiteKing << 4)),
+					                    .originIndex      = e1,
+					                    .destinationIndex = g1 });
 				}
 			}
 			if (this->castleWQ()) {
 				if (!(this->bitboards[occupied] & (bitboardFromIndex(d1) | bitboardFromIndex(c1) | bitboardFromIndex(b1))) && (notAttackedByOpponent & bitboardFromIndex(d1)) && (notAttackedByOpponent & bitboardFromIndex(c1))) {
-					legalMoves.append({ .originIndex      = e1,
-					                    .destinationIndex = c1,
-					                    .flags            = static_cast<u16>(0x3000 | (whiteKing << 4)) });
+					legalMoves.append({ .flags            = static_cast<u16>(0x3000 | (whiteKing << 4)),
+					                    .originIndex      = e1,
+					                    .destinationIndex = c1 });
 				}
 			}
 		} else {
 			if (this->castleBK()) {
 				if (!(this->bitboards[occupied] & (bitboardFromIndex(g8) | bitboardFromIndex(f8))) && (notAttackedByOpponent & bitboardFromIndex(f8)) && (notAttackedByOpponent & bitboardFromIndex(g8))) {
-					legalMoves.append({ .originIndex      = e8,
-					                    .destinationIndex = g8,
-					                    .flags            = static_cast<u16>(0x4000 | (blackKing << 4)) });
+					legalMoves.append({ .flags            = static_cast<u16>(0x4000 | (blackKing << 4)),
+					                    .originIndex      = e8,
+					                    .destinationIndex = g8 });
 				}
 			}
 			if (this->castleBQ()) {
 				if (!(this->bitboards[occupied] & (bitboardFromIndex(d8) | bitboardFromIndex(c8) | bitboardFromIndex(b8))) && (notAttackedByOpponent & bitboardFromIndex(d8)) && (notAttackedByOpponent & bitboardFromIndex(c8))) {
-					legalMoves.append({ .originIndex      = e8,
-					                    .destinationIndex = c8,
-					                    .flags            = static_cast<u16>(0x5000 | (blackKing << 4)) });
+					legalMoves.append({ .flags            = static_cast<u16>(0x5000 | (blackKing << 4)),
+					                    .originIndex      = e8,
+					                    .destinationIndex = c8 });
 				}
 			}
 		}
@@ -220,67 +220,67 @@ template <chess::boardAnnotations allyColor>
 			if (promotionCapture) {
 				while (promotionCapture) {    // not double pawn push
 					const u8 moveSpot { static_cast<u8>(ctz64(promotionCapture)) };
-					legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-					                    .destinationIndex = moveSpot,
-					                    .flags            = static_cast<u16>(0x1000 | (allyKnight << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]) });
-					legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-					                    .destinationIndex = moveSpot,
-					                    .flags            = static_cast<u16>(0x1000 | (allyBishop << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]) });
-					legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-					                    .destinationIndex = moveSpot,
-					                    .flags            = static_cast<u16>(0x1000 | (allyRook << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]) });
-					legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-					                    .destinationIndex = moveSpot,
-					                    .flags            = static_cast<u16>(0x1000 | (allyQueen << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]) });
+					legalMoves.append({ .flags            = static_cast<u16>(0x1000 | (allyKnight << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]),
+					                    .originIndex      = currentAllyPawnIndex,
+					                    .destinationIndex = moveSpot });
+					legalMoves.append({ .flags            = static_cast<u16>(0x1000 | (allyBishop << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]),
+					                    .originIndex      = currentAllyPawnIndex,
+					                    .destinationIndex = moveSpot });
+					legalMoves.append({ .flags            = static_cast<u16>(0x1000 | (allyRook << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]),
+					                    .originIndex      = currentAllyPawnIndex,
+					                    .destinationIndex = moveSpot });
+					legalMoves.append({ .flags            = static_cast<u16>(0x1000 | (allyQueen << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]),
+					                    .originIndex      = currentAllyPawnIndex,
+					                    .destinationIndex = moveSpot });
 					zeroLSB(promotionCapture);
 				}
 			} else if (notEnPassantCapture) {
 				while (notEnPassantCapture) {    // not double pawn push
 					const u8 moveSpot { static_cast<u8>(ctz64(notEnPassantCapture)) };
 					auto destinationPiece { this->pieceAtIndex[moveSpot] };
-					legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-					                    .destinationIndex = moveSpot,
-					                    .flags            = static_cast<u16>(0x1000 | (allyPawn << 4) | destinationPiece) });
+					legalMoves.append({ .flags            = static_cast<u16>(0x1000 | (allyPawn << 4) | destinationPiece),
+					                    .originIndex      = currentAllyPawnIndex,
+					                    .destinationIndex = moveSpot });
 					zeroLSB(notEnPassantCapture);
 				}
 			}
 
 			if (enPassant) [[unlikely]] {
 				const u8 moveSpot { static_cast<u8>(ctz64(enPassant)) };
-				auto newPos { this->move({ .originIndex      = currentAllyPawnIndex,
-					                       .destinationIndex = moveSpot,
-					                       .flags            = static_cast<u16>((allyColor ? 0x6000 : 0x7000) | allyPawn << 4) }) };
+				auto newPos { this->move({ .flags            = static_cast<u16>((allyColor ? 0x6000 : 0x7000) | allyPawn << 4),
+					                       .originIndex      = currentAllyPawnIndex,
+					                       .destinationIndex = moveSpot }) };
 				if (!newPos.attackers<opponentColor>(allyKingLocation)) [[likely]] {
-					legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-					                    .destinationIndex = moveSpot,
-					                    .flags            = static_cast<u16>((allyColor ? 0x6000 : 0x7000) | allyPawn << 4) });
+					legalMoves.append({ .flags            = static_cast<u16>((allyColor ? 0x6000 : 0x7000) | allyPawn << 4),
+					                    .originIndex      = currentAllyPawnIndex,
+					                    .destinationIndex = moveSpot });
 				}
 			}
 
 			if (promotionPush) [[unlikely]] {
 				const u8 moveSpot { static_cast<u8>(ctz64(promotionPush)) };
-				legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-				                    .destinationIndex = moveSpot,
-				                    .flags            = static_cast<u16>((allyKnight << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]) });
-				legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-				                    .destinationIndex = moveSpot,
-				                    .flags            = static_cast<u16>((allyBishop << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]) });
-				legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-				                    .destinationIndex = moveSpot,
-				                    .flags            = static_cast<u16>((allyRook << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]) });
-				legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-				                    .destinationIndex = moveSpot,
-				                    .flags            = static_cast<u16>((allyQueen << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]) });
+				legalMoves.append({ .flags            = static_cast<u16>((allyKnight << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]),
+				                    .originIndex      = currentAllyPawnIndex,
+				                    .destinationIndex = moveSpot });
+				legalMoves.append({ .flags            = static_cast<u16>((allyBishop << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]),
+				                    .originIndex      = currentAllyPawnIndex,
+				                    .destinationIndex = moveSpot });
+				legalMoves.append({ .flags            = static_cast<u16>((allyRook << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]),
+				                    .originIndex      = currentAllyPawnIndex,
+				                    .destinationIndex = moveSpot });
+				legalMoves.append({ .flags            = static_cast<u16>((allyQueen << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]),
+				                    .originIndex      = currentAllyPawnIndex,
+				                    .destinationIndex = moveSpot });
 			} else if (singlePush) {
 				const u8 moveSpot { static_cast<u8>(ctz64(singlePush)) };
-				legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-				                    .destinationIndex = moveSpot,
-				                    .flags            = static_cast<u16>(allyPawn << 4) });
+				legalMoves.append({ .flags            = static_cast<u16>(allyPawn << 4),
+				                    .originIndex      = currentAllyPawnIndex,
+				                    .destinationIndex = moveSpot });
 				if (doublePush) {    // double pawn push (only one possible per pawn)
 					const u8 moveSpot { static_cast<u8>(ctz64(doublePush)) };
-					legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-					                    .destinationIndex = moveSpot,
-					                    .flags            = static_cast<u16>((allyColor ? 0x8000 : 0x9000) | (allyPawn << 4)) });
+					legalMoves.append({ .flags            = static_cast<u16>((allyColor ? 0x8000 : 0x9000) | (allyPawn << 4)),
+					                    .originIndex      = currentAllyPawnIndex,
+					                    .destinationIndex = moveSpot });
 				}
 			}
 
@@ -300,7 +300,7 @@ template <chess::boardAnnotations allyColor>
 			if (ray & (this->bitboards[pinningPiece] | this->bitboards[opponentQueen])) {
 				if (popcnt64(ray & this->bitboards[allyColor]) == 1) {    // If there is one ally piece inbetween, it's pinned
 					pinnedPieces |= ray & this->bitboards[allyColor];
-				} else if (popcnt64(ray & this->bitboards[allyColor]) == 0) { // If there isn't an ally piece, it's the checking piece.
+				} else if (popcnt64(ray & this->bitboards[allyColor]) == 0) {    // If there isn't an ally piece, it's the checking piece.
 					blockMask = ray & notAlly;
 				}
 			}
@@ -315,10 +315,10 @@ template <chess::boardAnnotations allyColor>
 		markPinned(rayAttack<northEast>, opponentBishop);
 		markPinned(rayAttack<southEast>, opponentBishop);
 
-		generatePieceMoves<allyKnight>(*this, legalMoves, pinnedPieces, notAlly, (captureMask | blockMask));
-		generatePieceMoves<allyRook>(*this, legalMoves, pinnedPieces, notAlly, (captureMask | blockMask));
-		generatePieceMoves<allyBishop>(*this, legalMoves, pinnedPieces, notAlly, (captureMask | blockMask));
-		generatePieceMoves<allyQueen>(*this, legalMoves, pinnedPieces, notAlly, (captureMask | blockMask));
+		generatePieceMoves<allyKnight>(legalMoves, pinnedPieces, notAlly, (captureMask | blockMask));
+		generatePieceMoves<allyRook>(legalMoves, pinnedPieces, notAlly, (captureMask | blockMask));
+		generatePieceMoves<allyBishop>(legalMoves, pinnedPieces, notAlly, (captureMask | blockMask));
+		generatePieceMoves<allyQueen>(legalMoves, pinnedPieces, notAlly, (captureMask | blockMask));
 
 		u64 allyPawns { this->bitboards[allyPawn] & ~pinnedPieces };
 		const u64 enPassantTargetSquare_local { checkers & this->bitboards[opponentPawn] ? this->enPassantTargetSquare : 0 };    // En passant is only available if the checking piece is a pawn
@@ -336,75 +336,75 @@ template <chess::boardAnnotations allyColor>
 
 			if (promotionCapture) {
 				const u8 moveSpot { static_cast<u8>(ctz64(promotionCapture)) };
-				legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-				                    .destinationIndex = moveSpot,
-				                    .flags            = static_cast<u16>(0x1000 | (allyKnight << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]) });
-				legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-				                    .destinationIndex = moveSpot,
-				                    .flags            = static_cast<u16>(0x1000 | (allyBishop << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]) });
-				legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-				                    .destinationIndex = moveSpot,
-				                    .flags            = static_cast<u16>(0x1000 | (allyRook << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]) });
-				legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-				                    .destinationIndex = moveSpot,
-				                    .flags            = static_cast<u16>(0x1000 | (allyQueen << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]) });
+				legalMoves.append({ .flags            = static_cast<u16>(0x1000 | (allyKnight << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]),
+				                    .originIndex      = currentAllyPawnIndex,
+				                    .destinationIndex = moveSpot });
+				legalMoves.append({ .flags            = static_cast<u16>(0x1000 | (allyBishop << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]),
+				                    .originIndex      = currentAllyPawnIndex,
+				                    .destinationIndex = moveSpot });
+				legalMoves.append({ .flags            = static_cast<u16>(0x1000 | (allyRook << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]),
+				                    .originIndex      = currentAllyPawnIndex,
+				                    .destinationIndex = moveSpot });
+				legalMoves.append({ .flags            = static_cast<u16>(0x1000 | (allyQueen << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]),
+				                    .originIndex      = currentAllyPawnIndex,
+				                    .destinationIndex = moveSpot });
 			} else if (capture) {
 				const u8 moveSpot { static_cast<u8>(ctz64(capture)) };
-				legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-				                    .destinationIndex = moveSpot,
-				                    .flags            = static_cast<u16>(0x1000 | (allyPawn << 4) | this->pieceAtIndex[moveSpot]) });
+				legalMoves.append({ .flags            = static_cast<u16>(0x1000 | (allyPawn << 4) | this->pieceAtIndex[moveSpot]),
+				                    .originIndex      = currentAllyPawnIndex,
+				                    .destinationIndex = moveSpot });
 			} else if (enPassant) [[unlikely]] {
 				const u8 moveSpot { static_cast<u8>(ctz64(enPassant)) };
-				auto newPos { this->move({ .originIndex      = currentAllyPawnIndex,
-					                       .destinationIndex = moveSpot,
-					                       .flags            = static_cast<u16>((allyColor ? 0x6000 : 0x7000) | allyPawn << 4) }) };
+				auto newPos { this->move({ .flags            = static_cast<u16>((allyColor ? 0x6000 : 0x7000) | allyPawn << 4),
+					                       .originIndex      = currentAllyPawnIndex,
+					                       .destinationIndex = moveSpot }) };
 				if (!newPos.attackers<opponentColor>(allyKingLocation)) [[likely]] {
-					legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-					                    .destinationIndex = moveSpot,
-					                    .flags            = static_cast<u16>((allyColor ? 0x6000 : 0x7000) | allyPawn << 4) });
+					legalMoves.append({ .flags            = static_cast<u16>((allyColor ? 0x6000 : 0x7000) | allyPawn << 4),
+					                    .originIndex      = currentAllyPawnIndex,
+					                    .destinationIndex = moveSpot });
 				}
 			}
 
 			if (promotionPush) [[unlikely]] {
 				const u8 moveSpot { static_cast<u8>(ctz64(promotionPush)) };
-				legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-				                    .destinationIndex = moveSpot,
-				                    .flags            = static_cast<u16>((allyKnight << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]) });
-				legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-				                    .destinationIndex = moveSpot,
-				                    .flags            = static_cast<u16>((allyBishop << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]) });
-				legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-				                    .destinationIndex = moveSpot,
-				                    .flags            = static_cast<u16>((allyRook << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]) });
-				legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-				                    .destinationIndex = moveSpot,
-				                    .flags            = static_cast<u16>((allyQueen << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]) });
+				legalMoves.append({ .flags            = static_cast<u16>((allyKnight << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]),
+				                    .originIndex      = currentAllyPawnIndex,
+				                    .destinationIndex = moveSpot });
+				legalMoves.append({ .flags            = static_cast<u16>((allyBishop << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]),
+				                    .originIndex      = currentAllyPawnIndex,
+				                    .destinationIndex = moveSpot });
+				legalMoves.append({ .flags            = static_cast<u16>((allyRook << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]),
+				                    .originIndex      = currentAllyPawnIndex,
+				                    .destinationIndex = moveSpot });
+				legalMoves.append({ .flags            = static_cast<u16>((allyQueen << 8) | (allyPawn << 4) | this->pieceAtIndex[moveSpot]),
+				                    .originIndex      = currentAllyPawnIndex,
+				                    .destinationIndex = moveSpot });
 			} else if (singlePush) {
 				const u8 moveSpot { static_cast<u8>(ctz64(singlePush)) };
-				legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-				                    .destinationIndex = moveSpot,
-				                    .flags            = static_cast<u16>(allyPawn << 4) });
+				legalMoves.append({ .flags            = static_cast<u16>(allyPawn << 4),
+				                    .originIndex      = currentAllyPawnIndex,
+				                    .destinationIndex = moveSpot });
 			}
 
 			if (doublePush) {    // double pawn push (only one possible per pawn)
 				const u8 moveSpot { static_cast<u8>(ctz64(doublePush)) };
-				legalMoves.append({ .originIndex      = currentAllyPawnIndex,
-				                    .destinationIndex = moveSpot,
-				                    .flags            = static_cast<u16>((allyColor ? 0x8000 : 0x9000) | (allyPawn << 4)) });
+				legalMoves.append({ .flags            = static_cast<u16>((allyColor ? 0x8000 : 0x9000) | (allyPawn << 4)),
+				                    .originIndex      = currentAllyPawnIndex,
+				                    .destinationIndex = moveSpot });
 			}
 			zeroLSB(allyPawns);
 		}
-	} 
-    // King can always move.
-    u64 allyKingMoves { this->pieceMoves<king>(allyKingLocation, this->bitboards[occupied]) & notAlly & notAttackedByOpponent };
-    while (allyKingMoves) {
-        const auto destinationSquare { ctz64(allyKingMoves) };
-        const auto destinationPiece { this->pieceAtIndex[destinationSquare] };
-        legalMoves.append({ .originIndex      = allyKingLocation,
-                            .destinationIndex = destinationSquare,
-                            .flags            = static_cast<u16>(getCaptureFlag(destinationPiece) | (allyKing << 4) | destinationPiece) });
-        zeroLSB(allyKingMoves);
-    }
+	}
+	// King can always move.
+	u64 allyKingMoves { this->pieceMoves<king>(allyKingLocation, this->bitboards[occupied]) & notAlly & notAttackedByOpponent };
+	while (allyKingMoves) {
+		const auto destinationSquare { ctz64(allyKingMoves) };
+		const auto destinationPiece { this->pieceAtIndex[destinationSquare] };
+		legalMoves.append({ .flags            = static_cast<u16>(getCaptureFlag(destinationPiece) | (allyKing << 4) | destinationPiece),
+		                    .originIndex      = allyKingLocation,
+		                    .destinationIndex = destinationSquare });
+		zeroLSB(allyKingMoves);
+	}
 
 	return legalMoves;
 }
@@ -444,7 +444,7 @@ template <chess::boardAnnotations attackingColor>
 
 	resultAttackBoard |= constants::kingAttacks[ctz64(this->bitboards[attackingKing])];
 
-    if constexpr (attackingColor == white) {
+	if constexpr (attackingColor == white) {
 		resultAttackBoard |= (this->bitboards[attackingPawn] << 9) & ~0x0101010101010101;
 		resultAttackBoard |= (this->bitboards[attackingPawn] << 7) & ~0x8080808080808080;
 	} else {

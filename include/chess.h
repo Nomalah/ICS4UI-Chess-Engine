@@ -232,16 +232,16 @@ namespace chess {
 #endif
 		}
 
-        // Expand to intergral types
-        inline u64 zeroLSB(u64& bitboard) noexcept {
-			return bitboard &= bitboard - 1; // Should become the BLSR instruction on x86
+		// Expand to intergral types
+		inline u64 zeroLSB(u64& bitboard) noexcept {
+			return bitboard &= bitboard - 1;    // Should become the BLSR instruction on x86
 		}
 
 		// Functions to modify board/piece annotations
 		[[nodiscard]] constexpr chess::boardAnnotations colorOf(const chess::boardAnnotations piece) noexcept {
 			return static_cast<chess::boardAnnotations>(piece & 0x08);
 		}
-        [[nodiscard]] constexpr chess::boardAnnotations getPieceOf(const chess::boardAnnotations piece) noexcept {
+		[[nodiscard]] constexpr chess::boardAnnotations getPieceOf(const chess::boardAnnotations piece) noexcept {
 			return static_cast<chess::boardAnnotations>(piece & 0x07);
 		}
 		[[nodiscard]] constexpr chess::boardAnnotations operator~(const chess::boardAnnotations piece) noexcept {
@@ -275,19 +275,19 @@ namespace chess {
 
 		template <chess::attackRayDirection direction>
 		[[nodiscard]] constexpr chess::u64 rayAttack(const chess::u8 squareFrom, const chess::u64 occupiedSquares) noexcept {
-			if constexpr (chess::attackRayDirection::north == direction || chess::attackRayDirection::northWest == direction || chess::attackRayDirection::west == direction || chess::attackRayDirection::northEast == direction){
+			if constexpr (chess::attackRayDirection::north == direction || chess::attackRayDirection::northWest == direction || chess::attackRayDirection::west == direction || chess::attackRayDirection::northEast == direction) {
 				return positiveRayAttacks<direction>(squareFrom, occupiedSquares);
 			} else {
-                return negativeRayAttacks<direction>(squareFrom, occupiedSquares);
-            }
+				return negativeRayAttacks<direction>(squareFrom, occupiedSquares);
+			}
 		}
 	}    // namespace util
 
 	// More stores the
 	struct moveData {
+		chess::u16 flags;
 		chess::u8 originIndex;
 		chess::u8 destinationIndex;
-		chess::u16 flags;
 		[[nodiscard]] constexpr chess::boardAnnotations capturedPiece() const noexcept { return static_cast<chess::boardAnnotations>((flags >> 0) & 0x000F); }
 		[[nodiscard]] constexpr chess::boardAnnotations movePiece() const noexcept { return static_cast<chess::boardAnnotations>((flags >> 4) & 0x000F); }
 		[[nodiscard]] constexpr chess::boardAnnotations promotionPiece() const noexcept { return static_cast<chess::boardAnnotations>((flags >> 8) & 0x000F); }
@@ -365,6 +365,9 @@ namespace chess {
 		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::king>(const chess::u8 squareFrom, const u64 occupied) const noexcept {
 			return chess::util::constants::kingAttacks[squareFrom];
 		}
+
+		template <chess::boardAnnotations piece>
+		void generatePieceMoves(chess::staticVector<chess::moveData>& legalMoves, const chess::u64 pinnedPieces, const chess::u64 notAlly, const chess::u64 mask = chess::util::constants::bitboardFull) const noexcept;
 
 		[[nodiscard]] std::string ascii() const noexcept;
 		[[nodiscard]] constexpr chess::boardAnnotations turn() const noexcept { return static_cast<chess::boardAnnotations>(flags & 0x08); }    // 0 - 1 (1 bit)

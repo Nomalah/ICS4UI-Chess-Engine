@@ -149,9 +149,9 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 
 void chess::game::move(const std::string& uciMove) noexcept {
 	chess::moveData libraryMove {
+		.flags            = 0,
 		.originIndex      = chess::util::algebraicToSquare(uciMove.substr(0, 2)),
-		.destinationIndex = chess::util::algebraicToSquare(uciMove.substr(2, 2)),
-		.flags            = 0
+		.destinationIndex = chess::util::algebraicToSquare(uciMove.substr(2, 2))
 	};
 	libraryMove.flags |= this->currentPosition().pieceAtIndex[libraryMove.destinationIndex];
 	libraryMove.flags |= this->currentPosition().pieceAtIndex[libraryMove.originIndex] << 4;
