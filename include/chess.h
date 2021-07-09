@@ -84,14 +84,9 @@ namespace chess {
 			return 0x0ULL;
 		};
 		[[nodiscard]] std::string squareToAlgebraic(const chess::squareAnnotations square);
-		[[nodiscard]] constexpr char pieceToChar(const chess::boardAnnotations piece, const bool uciFormat) {
-			if (uciFormat) {
-				constexpr char conversionList[] = { '\0', 'p', 'n', 'b', 'r', 'q', 'k', '\0', '\0', 'p', 'n', 'b', 'r', 'q', 'k', '\0' };
-				return conversionList[piece];
-			} else {
-				constexpr char conversionList[] = { '*', 'p', 'n', 'b', 'r', 'q', 'k', '*', '*', 'P', 'N', 'B', 'R', 'Q', 'K', '*' };
-				return conversionList[piece];
-			}
+		[[nodiscard]] constexpr char pieceToChar(const chess::boardAnnotations piece) {
+            constexpr char conversionList[] = "*pnbrqk**PNBRQK*";
+            return conversionList[piece];
 		}
 		[[nodiscard]] constexpr u64 bitboardFromIndex(const u8 index) { return 1ULL << index; };
 
@@ -298,10 +293,10 @@ namespace chess {
 		[[nodiscard]] constexpr chess::u16 moveFlags() const noexcept { return flags & 0xFF00; }
 		[[nodiscard]] inline std::string toString() const noexcept {
 			auto result { chess::util::squareToAlgebraic(static_cast<chess::squareAnnotations>(this->originIndex)) + chess::util::squareToAlgebraic(static_cast<chess::squareAnnotations>(this->destinationIndex)) };
-			if (char promotion { chess::util::pieceToChar(this->promotionPiece(), true) }; promotion == '\0')
+			if (this->promotionPiece() == 0)
 				return result;
 			else
-				return result + promotion;
+				return result + chess::util::pieceToChar(chess::util::getPieceOf(this->promotionPiece()));
 		}
 	};
 	[[nodiscard]] constexpr bool operator==(const moveData lhs, const moveData rhs) {

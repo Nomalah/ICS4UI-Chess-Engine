@@ -9,10 +9,10 @@
 	result.reserve(132);    // Size of final string
 
 	for (chess::u64 targetSquare { chess::util::constants::bitboardIter }, y { 8 }; y > 0; y--) {
-		result += static_cast<char>(y + 48);
+		result += static_cast<char>(y + '0');
 		result += '|';
 		for (std::size_t x = 8; x > 0; x--, targetSquare >>= 1) {
-			result += chess::util::pieceToChar(this->pieceAtIndex[y * 8 + x - 9], false);
+			result += chess::util::pieceToChar(this->pieceAtIndex[y * 8 + x - 9]);
 		}
 		result += "|\n";
 	}
