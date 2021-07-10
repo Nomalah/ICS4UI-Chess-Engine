@@ -70,6 +70,10 @@ namespace chess {
 		// clang-format on
 	};
 
+	constexpr squareAnnotations operator++(squareAnnotations& square) noexcept {
+		return square = static_cast<squareAnnotations>(square + 1);
+	}
+
 	enum moveFlags : chess::u16
 	{
 		quiet                 = 0x0000,
@@ -113,9 +117,6 @@ namespace chess {
 
 			constexpr u64 bitboardFull { 0xFFFFFFFFFFFFFFFFULL };
 			constexpr u64 bitboardIter { 1ULL << 63 };
-			constexpr squareAnnotations operator++(squareAnnotations& square) noexcept {
-				return square = static_cast<squareAnnotations>(square + 1);
-			}
 
 			namespace {
 				constexpr std::array<std::array<chess::u64, 64>, 8> generateAttackRays() {
