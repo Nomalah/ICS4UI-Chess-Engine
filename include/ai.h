@@ -318,4 +318,4 @@ namespace chess::ai {
 	}
 }    // namespace chess::ai
 
-#endif // NMLH_CHESS_AI_H
+#endif    // NMLH_CHESS_AI_H
