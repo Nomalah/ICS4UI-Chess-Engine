@@ -1,4 +1,5 @@
-#pragma once
+#ifndef NMLH_CHESS_H
+#define NMLH_CHESS_H
 
 #include <array>
 #include <string>
@@ -440,3 +441,5 @@ namespace chess {
 	}
 
 }    // namespace chess
+
+#endif // NMLH_CHESS_H

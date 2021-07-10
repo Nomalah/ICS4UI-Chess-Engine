@@ -1,4 +1,5 @@
-#pragma once
+#ifndef NMLH_CHESS_AI_H
+#define NMLH_CHESS_AI_H
 
 #include "chess.h"
 #include <algorithm>
@@ -316,3 +317,5 @@ namespace chess::ai {
 		return result.reccomendedMove;
 	}
 }    // namespace chess::ai
+
+#endif // NMLH_CHESS_AI_H
