@@ -69,6 +69,24 @@ namespace chess {
 		// clang-format on
 	};
 
+	enum moveFlags : chess::u16
+	{
+		quiet                 = 0x0000,
+		quietPromotionBegin   = 0x0100,
+		quietPromotionEnd     = 0x0F00,
+		capture               = 0x1000,
+		capturePromotionBegin = 0x1100,
+		capturePromotionEnd   = 0x1F00,
+		whiteKingsideCastle   = 0x2000,
+		whiteQueensideCastle  = 0x3000,
+		blackKingsideCastle   = 0x4000,
+		blackQueensideCastle  = 0x5000,
+		whiteEnPassant        = 0x6000,
+		blackEnPassant        = 0x7000,
+		whiteDoublePush       = 0x8000,
+		blackDoublePush       = 0x9000
+	};
+
 	namespace util {
 		[[nodiscard]] constexpr u8 algebraicToSquare(const std::string& algebraic) noexcept {
 			if (algebraic.length() == 2) {
@@ -248,7 +266,7 @@ namespace chess {
 			return static_cast<chess::attackRayDirection>(direction ^ chess::attackRayDirection::south);
 		}
 
-		[[nodiscard]] constexpr chess::u16 getCaptureFlag(chess::boardAnnotations piece) { return piece != chess::boardAnnotations::empty ? 0x1000 : 0x0000; };
+		[[nodiscard]] constexpr chess::moveFlags getCaptureFlag(chess::boardAnnotations piece) { return piece != chess::boardAnnotations::empty ? chess::moveFlags::capture : chess::moveFlags::quiet; };
 
 		[[nodiscard]] constexpr chess::boardAnnotations constructPiece(const chess::boardAnnotations piece, const chess::boardAnnotations color) {
 			return static_cast<chess::boardAnnotations>(piece | color);
