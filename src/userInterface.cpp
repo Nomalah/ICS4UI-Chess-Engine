@@ -8,11 +8,11 @@
 	std::string result { " +--------+\n" };
 	result.reserve(132);    // Size of final string
 
-	for (chess::u64 targetSquare { chess::util::constants::bitboardIter }, y { 8 }; y > 0; y--) {
+	for (auto targetSquare { 63 }, y { 0 }; y < 8; y++) {
 		result += static_cast<char>(y + '0');
 		result += '|';
-		for (std::size_t x = 8; x > 0; x--, targetSquare >>= 1) {
-			result += chess::util::pieceToChar(this->pieceAtIndex[y * 8 + x - 9]);
+		for (auto x { 0 }; x < 8; x++, targetSquare--) {
+			result += chess::util::pieceToChar(this->pieceAtIndex[targetSquare]);
 		}
 		result += "|\n";
 	}
@@ -135,13 +135,16 @@
 		}
 
 		// Set en passant target square
-		result.enPassantTargetSquare = chess::util::bitboardFromIndex(chess::util::algebraicToSquare(tokens[3]));
-
+		if (tokens[3] != "-") {
+			result.enPassantTargetSquare = chess::util::bitboardFromIndex(chess::util::algebraicToSquare(tokens[3]));
+		} else {
+			result.enPassantTargetSquare = 0;
+		}
 		// Set halfmove clock
 		result.halfMoveClock = static_cast<chess::u8>(std::stoul(tokens[4]));
 
 		// Set fullmove number
-		// (Unused and not implimented)
+		result.fullMoveClock = static_cast<chess::u16>(std::stoul(tokens[5]));
 
 		// Set the zobrist hash of the position]
 		result.bitboards[boardAnnotations::occupied] = result.bitboards[boardAnnotations::white] | result.bitboards[boardAnnotations::black];
@@ -158,4 +161,56 @@
 			.zobristHash           = 0
 		};
 	}
+}
+
+[[nodiscard]] std::string chess::position::toFen() const noexcept {
+	std::string result;
+	result.reserve(64 + 7 + 1 + 4 + 2 + 4 + 4);    // 64 max squares + 7 slashes + 1 turn + 4 castle + 2 halfmove + 4 fullmove + 4 spaces
+
+	for (auto targetSquare { 63 }, y { 0 }; y < 8; y++) {
+		int emptyCount { 0 };
+		for (auto x { 0 }; x < 8; x++, targetSquare--) {
+			char piece { chess::util::pieceToChar(this->pieceAtIndex[targetSquare]) };
+			if (piece != '*') {
+				if (emptyCount != 0)
+					result += std::to_string(emptyCount);
+				result += piece;
+				emptyCount = 0;
+			} else {
+				emptyCount++;
+			}
+		}
+		if (emptyCount != 0) {
+			result += std::to_string(emptyCount);
+		}
+		result += '/';
+	}
+	result.back() = ' ';
+
+	result += this->turn() == white ? 'w' : 'b';
+	result += ' ';
+	if (this->castleWK())
+		result += 'K';
+	if (this->castleWQ())
+		result += 'Q';
+	if (this->castleBK())
+		result += 'k';
+	if (this->castleBQ())
+		result += 'q';
+	if ((this->flags & 0xF0) == 0)
+		result += '-';
+
+	result += ' ';
+
+	if (this->enPassantTargetSquare == 0) {
+		result += '-';
+	} else {
+		result += chess::util::squareToAlgebraic(chess::util::ctz64(this->enPassantTargetSquare));
+	}
+
+	result += ' ';
+	result += std::to_string(this->halfMoveClock);
+	result += ' ';
+	result += std::to_string(this->fullMoveClock);
+	return result;
 }

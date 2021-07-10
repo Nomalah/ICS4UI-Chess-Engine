@@ -142,11 +142,22 @@ int main(int argc, const char* argv[]) {
 
 	std::cout << "\u001b[31mImproper or no arguments were given - running default tests" << std::endl;
 
-	size_t totalTests  = 0;
-	size_t passedTests = 0;
+	size_t perftTotalTests  = 0;
+	size_t perftPassedTests = 0;
+	size_t fenTotalTests    = 0;
+	size_t fenPassedTests   = 0;
 
 	for (const perftTest& test : tests) {
 		std::cout << "\u001b[34m[Test]@Position=" << test.testFen << std::endl;
+		fenTotalTests++;
+		std::string testFenResult { chess::game { test.testFen }.currentPosition().toFen() };
+		if (testFenResult == test.testFen) {
+			fenPassedTests++;
+			std::cout << "\t[Fen]\u001b[32m[Passed Test]\u001b[0m -> [Result]:[" << testFenResult << "]" << std::endl;
+		} else {
+			std::cout << "\t[Fen]\u001b[31m[Failed Test]\u001b[0m -> [Result]:[" << testFenResult << "] - [Known Result]:[" << test.testFen << "]" << std::endl;
+		}
+
 		for (const perftTestResult& knownTestResult : test.testList) {
 			auto startTime         = std::chrono::high_resolution_clock::now();
 			perftResult testResult = perft(knownTestResult.depth, test.testFen);
@@ -162,13 +173,14 @@ int main(int argc, const char* argv[]) {
 					std::cout << "\t\t[" << move.toString() << "]:[" << total << "]\n";
 				}
 			} else {
-				std::cout << "\t\u001b[32m[Passed Test]@Depth=" << knownTestResult.depth << "\u001b[0m -> [Perft Result]:[" << testResult.total << "] - [Known Result]:[" << knownTestResult.nodes << "] - \u001b[34m[kn/s]:[" << testResult.total * 1000 / duration << "]" << std::endl;
-				passedTests++;
+				std::cout << "\t\u001b[32m[Passed Test]@Depth=" << knownTestResult.depth << "\u001b[0m -> [Perft Result]:[" << testResult.total << "] - \u001b[34m[kn/s]:[" << testResult.total * 1000 / duration << "]" << std::endl;
+				perftPassedTests++;
 			}
-			totalTests++;
+			perftTotalTests++;
 		}
 	}
-	std::cout << "\u001b[34m[Passed/Total]:[" << passedTests << "/" << totalTests << "]\u001b[0m\n";
+	std::cout << "\u001b[34m[Perft:Passed/Total]:[" << perftPassedTests << "/" << perftTotalTests << "]\u001b[0m\n";
+	std::cout << "\u001b[34m[Fen:Passed/Total]:[" << fenPassedTests << "/" << fenTotalTests << "]\u001b[0m\n";
 	std::cout << "\u001b[34m[.moves()]:[" << (movesTime.totalTime / movesTime.totalRuns) << "ns/iter]:[" << movesTime.totalRuns << "iters]\u001b[0m\n";
 	std::cout << "\u001b[34m[.move()]:[" << (moveTime.totalTime / moveTime.totalRuns) << "ns/iter]:[" << moveTime.totalRuns << "iters]\u001b[0m\n";
 	std::cout << "\u001b[34m[.undo()]:[" << (undoTime.totalTime / undoTime.totalRuns) << "ns/iter]:[" << undoTime.totalRuns << "iters]\u001b[0m\n";

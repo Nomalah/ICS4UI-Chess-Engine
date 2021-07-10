@@ -12,7 +12,7 @@ namespace chess {
 	typedef unsigned int u32;
 	typedef unsigned long long u64;
 	static_assert(sizeof(u8) == 1 && sizeof(u16) == 2 && sizeof(u32) == 4 && sizeof(u64));
-    
+
 	enum attackRayDirection : chess::u8
 	{
 		north     = 0,
@@ -85,8 +85,8 @@ namespace chess {
 		};
 		[[nodiscard]] std::string squareToAlgebraic(const chess::squareAnnotations square);
 		[[nodiscard]] constexpr char pieceToChar(const chess::boardAnnotations piece) {
-            constexpr char conversionList[] = "*pnbrqk**PNBRQK*";
-            return conversionList[piece];
+			constexpr char conversionList[] = "*pnbrqk**PNBRQK*";
+			return conversionList[piece];
 		}
 		[[nodiscard]] constexpr u64 bitboardFromIndex(const u8 index) { return 1ULL << index; };
 
@@ -332,6 +332,7 @@ namespace chess {
 		chess::u8 halfMoveClock;
 		chess::u64 enPassantTargetSquare;
 		chess::u64 zobristHash;
+		chess::u16 fullMoveClock;
 
 		template <chess::boardAnnotations allyColor>
 		[[nodiscard]] staticVector<moveData> moves() const noexcept;
@@ -382,7 +383,6 @@ namespace chess {
 		}
 
 		[[nodiscard]] std::string toFen() const noexcept;
-		[[nodiscard]] std::string toFen(std::size_t turnCount) const noexcept;
 
 		[[nodiscard]] static position fromFen(const std::string& fen) noexcept;
 		[[nodiscard]] static bool validateFen(const std::string& fen) noexcept;

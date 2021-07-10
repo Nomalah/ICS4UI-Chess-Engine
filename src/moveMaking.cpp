@@ -14,16 +14,18 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 	chess::position result       = *this;
 	result.enPassantTargetSquare = 0x0;
 	result.halfMoveClock++;
+	if (this->turn() == chess::boardAnnotations::black)
+		result.fullMoveClock++;
 	chess::position::nextTurn(result);
 	// Remove the piece from it's origin square
-	result.bitboards[chess::util::colorOf(desiredMove.movePiece())] &= ~desiredMove.originSquare();    // Colour only
-	result.bitboards[desiredMove.movePiece()] &= ~desiredMove.originSquare();                          // Colour and Piece
-	result.pieceAtIndex[desiredMove.originIndex] = boardAnnotations::null;                             // Set index value to null / Empty
+	result.bitboards[chess::util::colorOf(desiredMove.movePiece())] ^= desiredMove.originSquare();    // Colour only
+	result.bitboards[desiredMove.movePiece()] ^= desiredMove.originSquare();                          // Colour and Piece
+	result.pieceAtIndex[desiredMove.originIndex] = boardAnnotations::null;                            // Set index value to null / Empty
 	switch (desiredMove.moveFlags()) {
 		case 0x1000:
-			result.halfMoveClock = 0;                                                                                   // Capture
-			result.bitboards[chess::util::colorOf(desiredMove.capturedPiece())] &= ~desiredMove.destinationSquare();    // Delete captured piece's colour
-			result.bitboards[desiredMove.capturedPiece()] &= ~desiredMove.destinationSquare();                          // Delete captured piece
+			result.halfMoveClock = 0;                                                                                  // Capture
+			result.bitboards[chess::util::colorOf(desiredMove.capturedPiece())] ^= desiredMove.destinationSquare();    // Delete captured piece's colour
+			result.bitboards[desiredMove.capturedPiece()] ^= desiredMove.destinationSquare();                          // Delete captured piece
 			[[fallthrough]];
 		case 0x0000:                                                                                               // Quiet move
 			result.bitboards[chess::util::colorOf(desiredMove.movePiece())] |= desiredMove.destinationSquare();    // Colour only
@@ -31,9 +33,9 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 			result.pieceAtIndex[desiredMove.destinationIndex] = desiredMove.movePiece();                           // fill index value
 			break;
 
-		case 0x1100 ... 0x1F00:                                                                                         // Capture (Promotion)
-			result.bitboards[chess::util::colorOf(desiredMove.capturedPiece())] &= ~desiredMove.destinationSquare();    // Delete captured piece's colour
-			result.bitboards[desiredMove.capturedPiece()] &= ~desiredMove.destinationSquare();                          // Delete captured piece
+		case 0x1100 ... 0x1F00:                                                                                        // Capture (Promotion)
+			result.bitboards[chess::util::colorOf(desiredMove.capturedPiece())] ^= desiredMove.destinationSquare();    // Delete captured piece's colour
+			result.bitboards[desiredMove.capturedPiece()] ^= desiredMove.destinationSquare();                          // Delete captured piece
 			[[fallthrough]];
 		case 0x0100 ... 0x0F00:                                                                                         // Promotion
 			result.bitboards[chess::util::colorOf(desiredMove.promotionPiece())] |= desiredMove.destinationSquare();    // Colour only
@@ -76,16 +78,16 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 		case 0x6000:    // White taking black en passent
 			result.bitboards[white] |= desiredMove.destinationSquare();
 			result.bitboards[whitePawn] |= desiredMove.destinationSquare();
-			result.bitboards[black] &= ~(desiredMove.destinationSquare() >> 8);
-			result.bitboards[blackPawn] &= ~(desiredMove.destinationSquare() >> 8);
+			result.bitboards[black] ^= (desiredMove.destinationSquare() >> 8);
+			result.bitboards[blackPawn] ^= (desiredMove.destinationSquare() >> 8);
 			result.pieceAtIndex[desiredMove.destinationIndex]     = whitePawn;
 			result.pieceAtIndex[desiredMove.destinationIndex - 8] = null;
 			break;
 		case 0x7000:    // Black taking white en passent
 			result.bitboards[black] |= desiredMove.destinationSquare();
 			result.bitboards[blackPawn] |= desiredMove.destinationSquare();
-			result.bitboards[white] &= ~(desiredMove.destinationSquare() << 8);
-			result.bitboards[whitePawn] &= ~(desiredMove.destinationSquare() << 8);
+			result.bitboards[white] ^= (desiredMove.destinationSquare() << 8);
+			result.bitboards[whitePawn] ^= (desiredMove.destinationSquare() << 8);
 			result.pieceAtIndex[desiredMove.destinationIndex]     = blackPawn;
 			result.pieceAtIndex[desiredMove.destinationIndex + 8] = null;
 			break;
