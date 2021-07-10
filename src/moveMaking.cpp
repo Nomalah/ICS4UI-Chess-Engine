@@ -10,7 +10,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 }
 
 [[nodiscard]] chess::position chess::position::move(chess::moveData desiredMove) const noexcept {
-	using namespace chess::util::constants;
+	using namespace chess::constants;
 	chess::position result       = *this;
 	result.enPassantTargetSquare = 0x0;
 	result.halfMoveClock++;

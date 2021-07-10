@@ -42,7 +42,7 @@ template <chess::boardAnnotations allyColor>
 [[nodiscard]] chess::staticVector<chess::moveData> chess::position::moves() const noexcept {
 	using namespace chess;
 	using namespace chess::util;
-	using namespace chess::util::constants;
+	using namespace chess::constants;
 	constexpr boardAnnotations allyPawn { constructPiece(pawn, allyColor) };
 	constexpr boardAnnotations allyKnight { constructPiece(knight, allyColor) };
 	constexpr boardAnnotations allyBishop { constructPiece(bishop, allyColor) };

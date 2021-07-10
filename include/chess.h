@@ -92,6 +92,114 @@ namespace chess {
 		blackDoublePush       = 0x9000
 	};
 
+	namespace constants {
+
+		constexpr u64 bitboardFull { 0xFFFFFFFFFFFFFFFFULL };
+		constexpr u64 bitboardIter { 1ULL << 63 };
+
+		namespace {
+			constexpr std::array<std::array<chess::u64, 64>, 8> generateAttackRays() {
+				std::array<std::array<chess::u64, 64>, 8> resultRays {};
+				constexpr chess::u64 horizontal { 0x00000000000000FFULL };
+				constexpr chess::u64 vertical { 0x0101010101010101ULL };
+				constexpr chess::u64 diagonal { 0x0102040810204080ULL };
+				constexpr chess::u64 antiDiagonal { 0x8040201008040201ULL };
+				for (std::size_t y { 0 }; y < 8; y++) {
+					for (std::size_t x { 0 }; x < 8; x++) {
+						resultRays[chess::attackRayDirection::north][y * 8 + x]     = ((vertical << x) ^ (1ULL << (y * 8 + x))) & (chess::constants::bitboardFull << (y * 8));
+						resultRays[chess::attackRayDirection::south][y * 8 + x]     = ((vertical << x) ^ (1ULL << (y * 8 + x))) & ~(chess::constants::bitboardFull << (y * 8));
+						resultRays[chess::attackRayDirection::east][y * 8 + x]      = ((horizontal << y * 8) ^ (1ULL << (y * 8 + x))) & ~(chess::constants::bitboardFull << (y * 8 + x));
+						resultRays[chess::attackRayDirection::west][y * 8 + x]      = ((horizontal << y * 8) ^ (1ULL << (y * 8 + x))) & (chess::constants::bitboardFull << (y * 8 + x));
+						resultRays[chess::attackRayDirection::northEast][y * 8 + x] = ((x + y > 6 ? diagonal << (8 * (x + y - 7)) : diagonal >> (8 * (7 - x - y))) ^ (1ULL << (y * 8 + x))) & (chess::constants::bitboardFull << (y * 8));
+						resultRays[chess::attackRayDirection::southWest][y * 8 + x] = ((x + y > 6 ? diagonal << (8 * (x + y - 7)) : diagonal >> (8 * (7 - x - y))) ^ (1ULL << (y * 8 + x))) & ~(chess::constants::bitboardFull << (y * 8));
+						resultRays[chess::attackRayDirection::southEast][y * 8 + x] = ((y > x ? antiDiagonal << (8 * (y - x)) : antiDiagonal >> (8 * (x - y))) ^ (1ULL << (y * 8 + x))) & ~(chess::constants::bitboardFull << (y * 8 + x));
+						resultRays[chess::attackRayDirection::northWest][y * 8 + x] = ((y > x ? antiDiagonal << (8 * (y - x)) : antiDiagonal >> (8 * (x - y))) ^ (1ULL << (y * 8 + x))) & (chess::constants::bitboardFull << (y * 8 + x));
+					}
+				}
+
+				return resultRays;
+			}
+
+			constexpr std::array<chess::u64, 64> generateKnightJumps() {
+				constexpr std::array<chess::u64, 8> fileMask { { 0xC0C0C0C0C0C0C0C0ULL, 0x8080808080808080ULL, 0x0ULL, 0x0ULL, 0x0Ull, 0x0ULL, 0x0101010101010101ULL, 0x0303030303030303ULL } };
+				std::array<chess::u64, 64> resultJumps {};
+				chess::u64 defaultJump { 0x0000142200221400ULL };    // Attacks from e4
+				for (chess::squareAnnotations i { h1 }; i <= f4; ++i) {
+					resultJumps[i] = (defaultJump >> (e4 - i)) & ~fileMask[i % 8];
+				}
+
+				for (chess::squareAnnotations i { e4 }; i <= a8; ++i) {
+					resultJumps[i] = (defaultJump << (i - e4)) & ~fileMask[i % 8];
+				}
+
+				return resultJumps;
+			}
+
+			constexpr std::array<chess::u64, 64> generateKingAttacks() {
+				constexpr std::array<chess::u64, 8> fileMask { { 0x8080808080808080ULL, 0x0ULL, 0x0ULL, 0x0ULL, 0x0Ull, 0x0ULL, 0x0ULL, 0x0101010101010101ULL } };
+				std::array<chess::u64, 64> resultJumps {};
+				chess::u64 defaultAttack { 0x0000001C141C0000ULL };    // Attacks from e4
+				for (chess::squareAnnotations i { h1 }; i <= f4; ++i) {
+					resultJumps[i] = (defaultAttack >> (e4 - i)) & ~fileMask[i % 8];
+				}
+
+				for (chess::squareAnnotations i { e4 }; i <= a8; ++i) {
+					resultJumps[i] = (defaultAttack << (i - e4)) & ~fileMask[i % 8];
+				}
+
+				return resultJumps;
+			}
+
+			constexpr std::array<std::array<chess::u64, 64>, 2> generatePawnAttacks() {
+				constexpr std::array<chess::u64, 8> fileMask { { 0x8080808080808080ULL, 0x0ULL, 0x0ULL, 0x0ULL, 0x0Ull, 0x0ULL, 0x0ULL, 0x0101010101010101ULL } };
+				std::array<std::array<chess::u64, 64>, 2> resultAttacks {};
+				constexpr chess::u64 defaultAttackWhite { 0x0000000000000280ULL };
+				for (chess::squareAnnotations i { h1 }; i <= a8; ++i) {
+					resultAttacks[1][i] = (defaultAttackWhite << i) & ~fileMask[i % 8];
+				}
+
+				constexpr chess::u64 defaultAttackBlack { 0x0140000000000000ULL };
+				for (chess::squareAnnotations i { h1 }; i <= a8; ++i) {
+					resultAttacks[0][i] = (defaultAttackBlack >> (a8 - i)) & ~fileMask[i % 8];
+				}
+
+				return resultAttacks;
+			}
+
+			constexpr std::array<std::array<chess::u64, 16>, 64> generateZobristBitStrings() {
+				constexpr auto time_from_string { [](const char* str, int offset) {
+					return static_cast<std::uint32_t>(str[offset] - '0') * 10 + static_cast<std::uint32_t>(str[offset + 1] - '0');
+				} };
+
+				std::array<std::array<chess::u64, 16>, 64> result {};
+				// Seed the random number generation
+				auto previous = [&time_from_string]() -> chess::u64 {
+					return time_from_string(__TIME__, 0) * 360  /* hours */
+					       + time_from_string(__TIME__, 3) * 60 /* minutes */
+					       + time_from_string(__TIME__, 6) /* seconds */;
+				}();
+				for (auto& square : result) {
+					for (auto& piece : square) {
+						piece    = previous;
+						previous = ((137 * previous + 457) % 922372036854775808ULL);
+						piece ^= previous << 16;
+						previous = ((137 * previous + 457) % 922372036854775808ULL);
+						piece ^= previous << 32;
+						previous = ((137 * previous + 457) % 922372036854775808ULL);
+					}
+				}
+				return result;
+			}
+		}    // namespace
+
+		constexpr std::array<std::array<chess::u64, 64>, 8> attackRays { generateAttackRays() };
+		constexpr std::array<chess::u64, 64> kingAttacks { generateKingAttacks() };
+		constexpr std::array<chess::u64, 64> knightJumps { generateKnightJumps() };
+		constexpr std::array<std::array<chess::u64, 64>, 2> pawnAttacks { generatePawnAttacks() };
+
+		constexpr std::array<std::array<chess::u64, 16>, 64> zobristBitStrings { generateZobristBitStrings() };
+	}    // namespace constants
+
 	namespace util {
 		[[nodiscard]] constexpr u8 algebraicToSquare(const std::string& algebraic) noexcept {
 			if (algebraic.length() == 2) {
@@ -112,114 +220,6 @@ namespace chess {
 			return conversionList[piece];
 		}
 		[[nodiscard]] constexpr u64 bitboardFromIndex(const u8 index) { return 1ULL << index; };
-
-		namespace constants {
-
-			constexpr u64 bitboardFull { 0xFFFFFFFFFFFFFFFFULL };
-			constexpr u64 bitboardIter { 1ULL << 63 };
-
-			namespace {
-				constexpr std::array<std::array<chess::u64, 64>, 8> generateAttackRays() {
-					std::array<std::array<chess::u64, 64>, 8> resultRays {};
-					constexpr chess::u64 horizontal { 0x00000000000000FFULL };
-					constexpr chess::u64 vertical { 0x0101010101010101ULL };
-					constexpr chess::u64 diagonal { 0x0102040810204080ULL };
-					constexpr chess::u64 antiDiagonal { 0x8040201008040201ULL };
-					for (std::size_t y { 0 }; y < 8; y++) {
-						for (std::size_t x { 0 }; x < 8; x++) {
-							resultRays[chess::attackRayDirection::north][y * 8 + x]     = ((vertical << x) ^ (1ULL << (y * 8 + x))) & (chess::util::constants::bitboardFull << (y * 8));
-							resultRays[chess::attackRayDirection::south][y * 8 + x]     = ((vertical << x) ^ (1ULL << (y * 8 + x))) & ~(chess::util::constants::bitboardFull << (y * 8));
-							resultRays[chess::attackRayDirection::east][y * 8 + x]      = ((horizontal << y * 8) ^ (1ULL << (y * 8 + x))) & ~(chess::util::constants::bitboardFull << (y * 8 + x));
-							resultRays[chess::attackRayDirection::west][y * 8 + x]      = ((horizontal << y * 8) ^ (1ULL << (y * 8 + x))) & (chess::util::constants::bitboardFull << (y * 8 + x));
-							resultRays[chess::attackRayDirection::northEast][y * 8 + x] = ((x + y > 6 ? diagonal << (8 * (x + y - 7)) : diagonal >> (8 * (7 - x - y))) ^ (1ULL << (y * 8 + x))) & (chess::util::constants::bitboardFull << (y * 8));
-							resultRays[chess::attackRayDirection::southWest][y * 8 + x] = ((x + y > 6 ? diagonal << (8 * (x + y - 7)) : diagonal >> (8 * (7 - x - y))) ^ (1ULL << (y * 8 + x))) & ~(chess::util::constants::bitboardFull << (y * 8));
-							resultRays[chess::attackRayDirection::southEast][y * 8 + x] = ((y > x ? antiDiagonal << (8 * (y - x)) : antiDiagonal >> (8 * (x - y))) ^ (1ULL << (y * 8 + x))) & ~(chess::util::constants::bitboardFull << (y * 8 + x));
-							resultRays[chess::attackRayDirection::northWest][y * 8 + x] = ((y > x ? antiDiagonal << (8 * (y - x)) : antiDiagonal >> (8 * (x - y))) ^ (1ULL << (y * 8 + x))) & (chess::util::constants::bitboardFull << (y * 8 + x));
-						}
-					}
-
-					return resultRays;
-				}
-
-				constexpr std::array<chess::u64, 64> generateKnightJumps() {
-					constexpr std::array<chess::u64, 8> fileMask { { 0xC0C0C0C0C0C0C0C0ULL, 0x8080808080808080ULL, 0x0ULL, 0x0ULL, 0x0Ull, 0x0ULL, 0x0101010101010101ULL, 0x0303030303030303ULL } };
-					std::array<chess::u64, 64> resultJumps {};
-					chess::u64 defaultJump { 0x0000142200221400ULL };    // Attacks from e4
-					for (chess::squareAnnotations i { h1 }; i <= f4; ++i) {
-						resultJumps[i] = (defaultJump >> (e4 - i)) & ~fileMask[i % 8];
-					}
-
-					for (chess::squareAnnotations i { e4 }; i <= a8; ++i) {
-						resultJumps[i] = (defaultJump << (i - e4)) & ~fileMask[i % 8];
-					}
-
-					return resultJumps;
-				}
-
-				constexpr std::array<chess::u64, 64> generateKingAttacks() {
-					constexpr std::array<chess::u64, 8> fileMask { { 0x8080808080808080ULL, 0x0ULL, 0x0ULL, 0x0ULL, 0x0Ull, 0x0ULL, 0x0ULL, 0x0101010101010101ULL } };
-					std::array<chess::u64, 64> resultJumps {};
-					chess::u64 defaultAttack { 0x0000001C141C0000ULL };    // Attacks from e4
-					for (chess::squareAnnotations i { h1 }; i <= f4; ++i) {
-						resultJumps[i] = (defaultAttack >> (e4 - i)) & ~fileMask[i % 8];
-					}
-
-					for (chess::squareAnnotations i { e4 }; i <= a8; ++i) {
-						resultJumps[i] = (defaultAttack << (i - e4)) & ~fileMask[i % 8];
-					}
-
-					return resultJumps;
-				}
-
-				constexpr std::array<std::array<chess::u64, 64>, 2> generatePawnAttacks() {
-					constexpr std::array<chess::u64, 8> fileMask { { 0x8080808080808080ULL, 0x0ULL, 0x0ULL, 0x0ULL, 0x0Ull, 0x0ULL, 0x0ULL, 0x0101010101010101ULL } };
-					std::array<std::array<chess::u64, 64>, 2> resultAttacks {};
-					constexpr chess::u64 defaultAttackWhite { 0x0000000000000280ULL };
-					for (chess::squareAnnotations i { h1 }; i <= a8; ++i) {
-						resultAttacks[1][i] = (defaultAttackWhite << i) & ~fileMask[i % 8];
-					}
-
-					constexpr chess::u64 defaultAttackBlack { 0x0140000000000000ULL };
-					for (chess::squareAnnotations i { h1 }; i <= a8; ++i) {
-						resultAttacks[0][i] = (defaultAttackBlack >> (a8 - i)) & ~fileMask[i % 8];
-					}
-
-					return resultAttacks;
-				}
-
-				constexpr std::array<std::array<chess::u64, 16>, 64> generateZobristBitStrings() {
-					constexpr auto time_from_string { [](const char* str, int offset) {
-						return static_cast<std::uint32_t>(str[offset] - '0') * 10 + static_cast<std::uint32_t>(str[offset + 1] - '0');
-					} };
-
-					std::array<std::array<chess::u64, 16>, 64> result {};
-					// Seed the random number generation
-					auto previous = [&time_from_string]() -> chess::u64 {
-						return time_from_string(__TIME__, 0) * 360  /* hours */
-						       + time_from_string(__TIME__, 3) * 60 /* minutes */
-						       + time_from_string(__TIME__, 6) /* seconds */;
-					}();
-					for (auto& square : result) {
-						for (auto& piece : square) {
-							piece    = previous;
-							previous = ((137 * previous + 457) % 922372036854775808ULL);
-							piece ^= previous << 16;
-							previous = ((137 * previous + 457) % 922372036854775808ULL);
-							piece ^= previous << 32;
-							previous = ((137 * previous + 457) % 922372036854775808ULL);
-						}
-					}
-					return result;
-				}
-			}    // namespace
-
-			constexpr std::array<std::array<chess::u64, 64>, 8> attackRays { generateAttackRays() };
-			constexpr std::array<chess::u64, 64> kingAttacks { generateKingAttacks() };
-			constexpr std::array<chess::u64, 64> knightJumps { generateKnightJumps() };
-			constexpr std::array<std::array<chess::u64, 64>, 2> pawnAttacks { generatePawnAttacks() };
-
-			constexpr std::array<std::array<chess::u64, 16>, 64> zobristBitStrings { generateZobristBitStrings() };
-		}    // namespace constants
 
 		// Intrinsic wrapper functions
 		// Count trailing zeros (of a number's binary representation)
@@ -276,17 +276,17 @@ namespace chess {
 
 		template <chess::attackRayDirection direction>
 		[[nodiscard]] constexpr chess::u64 positiveRayAttacks(const chess::u8 squareFrom, const chess::u64 occupiedSquares) noexcept {
-			chess::u64 attacks { chess::util::constants::attackRays[direction][squareFrom] };
+			chess::u64 attacks { chess::constants::attackRays[direction][squareFrom] };
 			chess::u64 blocker { (attacks & occupiedSquares) | 0x8000000000000000 };
-			attacks ^= chess::util::constants::attackRays[direction][chess::util::ctz64(blocker)];
+			attacks ^= chess::constants::attackRays[direction][chess::util::ctz64(blocker)];
 			return attacks;
 		}
 
 		template <chess::attackRayDirection direction>
 		[[nodiscard]] constexpr chess::u64 negativeRayAttacks(const chess::u8 squareFrom, const chess::u64 occupiedSquares) noexcept {
-			chess::u64 attacks { chess::util::constants::attackRays[direction][squareFrom] };
+			chess::u64 attacks { chess::constants::attackRays[direction][squareFrom] };
 			chess::u64 blocker { (attacks & occupiedSquares) | 0x1 };
-			attacks ^= chess::util::constants::attackRays[direction][63U - chess::util::clz64(blocker)];
+			attacks ^= chess::constants::attackRays[direction][63U - chess::util::clz64(blocker)];
 			return attacks;
 		}
 
@@ -373,7 +373,7 @@ namespace chess {
 		}
 		template <>
 		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::knight>(const chess::u8 squareFrom, const u64 occupied) const noexcept {
-			return chess::util::constants::knightJumps[squareFrom];
+			return chess::constants::knightJumps[squareFrom];
 		}
 		template <>
 		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::queen>(const chess::u8 squareFrom, const u64 occupied) const noexcept {
@@ -381,11 +381,11 @@ namespace chess {
 		}
 		template <>
 		[[nodiscard]] inline chess::u64 pieceMoves<chess::boardAnnotations::king>(const chess::u8 squareFrom, const u64 occupied) const noexcept {
-			return chess::util::constants::kingAttacks[squareFrom];
+			return chess::constants::kingAttacks[squareFrom];
 		}
 
 		template <chess::boardAnnotations piece>
-		void generatePieceMoves(chess::staticVector<chess::moveData>& legalMoves, const chess::u64 pinnedPieces, const chess::u64 notAlly, const chess::u64 mask = chess::util::constants::bitboardFull) const noexcept;
+		void generatePieceMoves(chess::staticVector<chess::moveData>& legalMoves, const chess::u64 pinnedPieces, const chess::u64 notAlly, const chess::u64 mask = chess::constants::bitboardFull) const noexcept;
 
 		[[nodiscard]] std::string ascii() const noexcept;
 		[[nodiscard]] constexpr chess::boardAnnotations turn() const noexcept { return static_cast<chess::boardAnnotations>(flags & 0x08); }    // 0 - 1 (1 bit)
@@ -398,7 +398,7 @@ namespace chess {
 		constexpr void setZobrist() noexcept {
 			this->zobristHash = 0;
 			for (size_t index = 0; index < 64; index++) {
-				this->zobristHash ^= chess::util::constants::zobristBitStrings[index][pieceAtIndex[index]];
+				this->zobristHash ^= chess::constants::zobristBitStrings[index][pieceAtIndex[index]];
 			}
 		}
 
@@ -443,4 +443,4 @@ namespace chess {
 
 }    // namespace chess
 
-#endif // NMLH_CHESS_H
+#endif    // NMLH_CHESS_H

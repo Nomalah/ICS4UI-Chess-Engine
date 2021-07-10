@@ -22,7 +22,7 @@
 }
 
 [[nodiscard]] chess::position chess::position::fromFen(const std::string& fen) noexcept {
-	using namespace chess::util::constants;
+	using namespace chess::constants;
 	if (chess::position::validateFen(fen)) {
 		// Empty position with a valid flag enabled
 		chess::position result {
