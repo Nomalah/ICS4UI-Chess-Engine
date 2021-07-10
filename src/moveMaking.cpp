@@ -20,7 +20,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 	// Remove the piece from it's origin square
 	result.bitboards[chess::util::colorOf(desiredMove.movePiece())] ^= desiredMove.originSquare();    // Colour only
 	result.bitboards[desiredMove.movePiece()] ^= desiredMove.originSquare();                          // Colour and Piece
-	result.pieceAtIndex[desiredMove.originIndex] = boardAnnotations::null;                            // Set index value to null / Empty
+	result.pieceAtIndex[desiredMove.originIndex] = boardAnnotations::empty;                           // Set index value to Empty
 	switch (desiredMove.moveFlags()) {
 		case 0x1000:
 			result.halfMoveClock = 0;                                                                                  // Capture
@@ -47,7 +47,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 			result.bitboards[white] ^= 0x7;        // flip the bits for the white bitboard
 			result.bitboards[whiteRook] ^= 0x5;    // Flip the bits for the castling rook
 			result.bitboards[whiteKing] = 0x2;
-			result.pieceAtIndex[h1]     = null;
+			result.pieceAtIndex[h1]     = boardAnnotations::empty;
 			result.pieceAtIndex[g1]     = whiteKing;
 			result.pieceAtIndex[f1]     = whiteRook;
 			break;
@@ -55,7 +55,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 			result.bitboards[white] ^= 0xB0;        // flip the bits for the white bitboard
 			result.bitboards[whiteRook] ^= 0x90;    // Flip the bits for the castling rook
 			result.bitboards[whiteKing] = 0x20;
-			result.pieceAtIndex[a1]     = null;
+			result.pieceAtIndex[a1]     = boardAnnotations::empty;
 			result.pieceAtIndex[c1]     = whiteKing;
 			result.pieceAtIndex[d1]     = whiteRook;
 			break;
@@ -63,7 +63,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 			result.bitboards[black] ^= 0x0700000000000000ULL;        // flip the bits for the black bitboard
 			result.bitboards[blackRook] ^= 0x0500000000000000ULL;    // Flip the bits for the castling rook
 			result.bitboards[blackKing] = 0x0200000000000000ULL;
-			result.pieceAtIndex[h8]     = null;
+			result.pieceAtIndex[h8]     = boardAnnotations::empty;
 			result.pieceAtIndex[g8]     = blackKing;
 			result.pieceAtIndex[f8]     = blackRook;
 			break;
@@ -71,7 +71,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 			result.bitboards[black] ^= 0xB000000000000000ULL;        // flip the bits for the black bitboard
 			result.bitboards[blackRook] ^= 0x9000000000000000ULL;    // Flip the bits for the castling rook
 			result.bitboards[blackKing] = 0x2000000000000000ULL;
-			result.pieceAtIndex[a8]     = null;
+			result.pieceAtIndex[a8]     = boardAnnotations::empty;
 			result.pieceAtIndex[c8]     = blackKing;
 			result.pieceAtIndex[d8]     = blackRook;
 			break;
@@ -81,7 +81,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 			result.bitboards[black] ^= (desiredMove.destinationSquare() >> 8);
 			result.bitboards[blackPawn] ^= (desiredMove.destinationSquare() >> 8);
 			result.pieceAtIndex[desiredMove.destinationIndex]     = whitePawn;
-			result.pieceAtIndex[desiredMove.destinationIndex - 8] = null;
+			result.pieceAtIndex[desiredMove.destinationIndex - 8] = boardAnnotations::empty;
 			break;
 		case 0x7000:    // Black taking white en passent
 			result.bitboards[black] |= desiredMove.destinationSquare();
@@ -89,7 +89,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 			result.bitboards[white] ^= (desiredMove.destinationSquare() << 8);
 			result.bitboards[whitePawn] ^= (desiredMove.destinationSquare() << 8);
 			result.pieceAtIndex[desiredMove.destinationIndex]     = blackPawn;
-			result.pieceAtIndex[desiredMove.destinationIndex + 8] = null;
+			result.pieceAtIndex[desiredMove.destinationIndex + 8] = boardAnnotations::empty;
 			break;
 		case 0x8000:                                                           // White double pawn push
 			result.bitboards[white] |= desiredMove.destinationSquare();        // Colour only
@@ -145,6 +145,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 	}
 
 	result.bitboards[boardAnnotations::occupied] = result.bitboards[white] | result.bitboards[black];
+	result.bitboards[boardAnnotations::empty]    = ~result.bitboards[boardAnnotations::occupied];
 	result.setZobrist();
 	return result;
 }

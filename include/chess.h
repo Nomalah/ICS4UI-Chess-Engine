@@ -51,7 +51,7 @@ namespace chess {
 		whiteQueen  = 0xD,
 		whiteKing   = 0xE,
 
-		null        = 0x7,
+		empty       = 0x7,
 		occupied    = 0xF
 	};
 
@@ -248,7 +248,7 @@ namespace chess {
 			return static_cast<chess::attackRayDirection>(direction ^ chess::attackRayDirection::south);
 		}
 
-		[[nodiscard]] constexpr chess::u16 getCaptureFlag(chess::boardAnnotations piece) { return piece != null ? 0x1000 : 0x0000; };
+		[[nodiscard]] constexpr chess::u16 getCaptureFlag(chess::boardAnnotations piece) { return piece != chess::boardAnnotations::empty ? 0x1000 : 0x0000; };
 
 		[[nodiscard]] constexpr chess::boardAnnotations constructPiece(const chess::boardAnnotations piece, const chess::boardAnnotations color) {
 			return static_cast<chess::boardAnnotations>(piece | color);
@@ -369,7 +369,7 @@ namespace chess {
 
 		[[nodiscard]] std::string ascii() const noexcept;
 		[[nodiscard]] constexpr chess::boardAnnotations turn() const noexcept { return static_cast<chess::boardAnnotations>(flags & 0x08); }    // 0 - 1 (1 bit)
-		[[nodiscard]] constexpr chess::u64 empty() const noexcept { return ~bitboards[chess::boardAnnotations::occupied]; }
+		[[nodiscard]] constexpr chess::u64 empty() const noexcept { return bitboards[chess::boardAnnotations::empty]; }
 		[[nodiscard]] constexpr bool valid() const noexcept { return flags & 0x04; }    // 0 - 1 (1 bit)
 		[[nodiscard]] constexpr bool castleWK() const noexcept { return flags & 0x80; }
 		[[nodiscard]] constexpr bool castleWQ() const noexcept { return flags & 0x40; }
