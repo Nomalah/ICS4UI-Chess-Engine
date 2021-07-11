@@ -217,7 +217,7 @@ namespace chess::ai {
 
 		[[nodiscard]] int evaluate(const chess::position& toEvaluate) const noexcept {
 			using namespace chess::util;
-			using namespace chess::util::constants;
+			using namespace chess::constants;
 			static auto pieceValue = [&toEvaluate, this](chess::u8 piece) -> int {
 				return popcnt64(toEvaluate.bitboards[piece]) * this->internalWeights.evaluate.pieceValues[piece];
 			};
@@ -257,7 +257,7 @@ namespace chess::ai {
 		transpositionTable<(1 << 24)> TT { gameToTest };
 
 		auto alphaBeta = [&gameToTest, &nodes, &TT, &botToUse](const auto alphaBeta, int alpha, const int beta, const int ply, const bool capture) -> minimaxOutput {
-			if ((ply < 1 && !capture) || ply < maxQSearchPly) {
+			if (ply < 1 && !capture) {
 #ifdef AI_DEBUG
 				nodes++;
 #endif
@@ -269,8 +269,8 @@ namespace chess::ai {
 					(gameToTest.threeFoldRep() || gameToTest.currentPosition().halfMoveClock >= 50)
 						? -500
 						: (gameToTest.currentPosition().turn()
-					           ? (gameToTest.currentPosition().attackers(chess::util::ctz64(gameToTest.currentPosition().bitboards[chess::whiteKing]), black) ? -20000 - ply * 128 : -500)
-					           : (gameToTest.currentPosition().attackers(chess::util::ctz64(gameToTest.currentPosition().bitboards[chess::blackKing]), white) ? -20000 - ply * 128 : -500)),
+					           ? (gameToTest.currentPosition().inCheck<white>() ? -20000 - ply * 128 : -500)
+					           : (gameToTest.currentPosition().inCheck<black>() ? -20000 - ply * 128 : -500)),
 					{ 0, 0, 0 }
 				};
 			}

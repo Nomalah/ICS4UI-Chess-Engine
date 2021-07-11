@@ -454,12 +454,3 @@ template <chess::boardAnnotations attackingColor>
 
 	return resultAttackBoard;
 }
-
-template <chess::boardAnnotations attackingColor>
-[[nodiscard]] chess::u64 chess::position::attackers(const chess::squareAnnotations square) const noexcept {
-	using namespace chess::util;
-	return (this->pieceMoves<bishop>(square, this->bitboards[occupied]) & (this->bitboards[constructPiece(bishop, attackingColor)] | this->bitboards[constructPiece(queen, attackingColor)])) |
-	       (this->pieceMoves<rook>(square, this->bitboards[occupied]) & (this->bitboards[constructPiece(rook, attackingColor)] | this->bitboards[constructPiece(queen, attackingColor)])) |
-	       (this->pieceMoves<knight>(square, this->bitboards[occupied]) & this->bitboards[constructPiece(knight, attackingColor)]) |
-	       (constants::pawnAttacks[~attackingColor >> 3][square] & this->bitboards[constructPiece(pawn, attackingColor)]);
-}
