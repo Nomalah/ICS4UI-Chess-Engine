@@ -216,8 +216,7 @@ namespace chess {
 		};
 		[[nodiscard]] std::string squareToAlgebraic(const chess::squareAnnotations square);
 		[[nodiscard]] constexpr char pieceToChar(const chess::boardAnnotations piece) {
-			constexpr char conversionList[] = "*pnbrqk**PNBRQK*";
-			return conversionList[piece];
+			return "*pnbrqk**PNBRQK*"[piece];
 		}
 		[[nodiscard]] constexpr u64 bitboardFromIndex(const u8 index) { return 1ULL << index; };
 
