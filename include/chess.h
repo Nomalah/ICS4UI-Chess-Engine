@@ -415,8 +415,6 @@ namespace chess {
 
 		[[nodiscard]] static position fromFen(const std::string& fen) noexcept;
 		[[nodiscard]] static bool validateFen(const std::string& fen) noexcept;
-
-		inline static constexpr void nextTurn(position& toModify) noexcept { toModify.flags ^= 0x08; };    // Switches the turn on a position
 	};
 
 	struct game {

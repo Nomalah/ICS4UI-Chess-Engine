@@ -16,7 +16,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 	result.halfMoveClock++;
 	if (this->turn() == chess::boardAnnotations::black)
 		result.fullMoveClock++;
-	chess::position::nextTurn(result);
+	result.flags ^= chess::boardAnnotations::white;
 	// Remove the piece from it's origin square
 	result.bitboards[chess::util::colorOf(desiredMove.movePiece())] ^= desiredMove.originSquare();    // Colour only
 	result.bitboards[desiredMove.movePiece()] ^= desiredMove.originSquare();                          // Colour and Piece
