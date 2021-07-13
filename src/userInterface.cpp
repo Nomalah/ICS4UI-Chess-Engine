@@ -30,7 +30,7 @@
 			.pieceAtIndex          = {},
 			.flags                 = 0x04,
 			.halfMoveClock         = 0,
-			.enPassantTargetSquare = 0,
+			.enPassantTargetBitboard = 0,
 			.zobristHash           = 0
 		};
 		std::stringstream toTokenize { fen };
@@ -136,9 +136,9 @@
 
 		// Set en passant target square
 		if (tokens[3] != "-") {
-			result.enPassantTargetSquare = chess::util::bitboardFromIndex(chess::util::algebraicToSquare(tokens[3]));
+			result.enPassantTargetBitboard = chess::util::bitboardFromIndex(chess::util::algebraicToSquare(tokens[3]));
 		} else {
-			result.enPassantTargetSquare = 0;
+			result.enPassantTargetBitboard = 0;
 		}
 		// Set halfmove clock
 		result.halfMoveClock = static_cast<chess::u8>(std::stoul(tokens[4]));
@@ -158,7 +158,7 @@
 			.pieceAtIndex          = {},
 			.flags                 = 0,
 			.halfMoveClock         = 0,
-			.enPassantTargetSquare = 0,
+			.enPassantTargetBitboard = 0,
 			.zobristHash           = 0
 		};
 	}
@@ -203,10 +203,10 @@
 
 	result += ' ';
 
-	if (this->enPassantTargetSquare == 0) {
+	if (this->enPassantTargetBitboard == 0) {
 		result += '-';
 	} else {
-		result += chess::util::squareToAlgebraic(chess::util::ctz64(this->enPassantTargetSquare));
+		result += chess::util::squareToAlgebraic(chess::util::ctz64(this->enPassantTargetBitboard));
 	}
 
 	result += ' ';

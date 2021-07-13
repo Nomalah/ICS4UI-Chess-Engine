@@ -12,7 +12,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 [[nodiscard]] chess::position chess::position::move(chess::moveData desiredMove) const noexcept {
 	using namespace chess::constants;
 	chess::position result       = *this;
-	result.enPassantTargetSquare = 0x0;
+	result.enPassantTargetBitboard = 0x0;
 	result.halfMoveClock++;
 	if (this->turn() == chess::boardAnnotations::black)
 		result.fullMoveClock++;
@@ -95,13 +95,13 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 			result.bitboards[white] |= desiredMove.destinationSquare();        // Colour only
 			result.bitboards[whitePawn] |= desiredMove.destinationSquare();    // Colour and Piece
 			result.pieceAtIndex[desiredMove.destinationIndex] = whitePawn;     // fill index value
-			result.enPassantTargetSquare                      = desiredMove.destinationSquare() >> 8;
+			result.enPassantTargetBitboard                      = desiredMove.destinationSquare() >> 8;
 			break;
 		case chess::moveFlags::blackDoublePush:                                // Black double pawn push
 			result.bitboards[black] |= desiredMove.destinationSquare();        // Colour only
 			result.bitboards[blackPawn] |= desiredMove.destinationSquare();    // Colour and Piece
 			result.pieceAtIndex[desiredMove.destinationIndex] = blackPawn;     // fill index value
-			result.enPassantTargetSquare                      = desiredMove.destinationSquare() << 8;
+			result.enPassantTargetBitboard                      = desiredMove.destinationSquare() << 8;
 			break;
 		default:
 			std::cerr << "Unknown Move: " << std::hex << desiredMove.moveFlags() << '\n';

@@ -349,7 +349,7 @@ namespace chess {
 
 		chess::u8 flags;
 		chess::u8 halfMoveClock;
-		chess::u64 enPassantTargetSquare;
+		chess::u64 enPassantTargetBitboard;
 		chess::u64 zobristHash;
 		chess::u16 fullMoveClock;
 

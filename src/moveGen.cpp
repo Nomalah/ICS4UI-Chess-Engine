@@ -141,11 +141,11 @@ template <chess::boardAnnotations allyColor>
 						zeroLSB(movementMask);
 					}
 				} else if (this->pieceAtIndex[blockerLocation] == allyPawn) {
-					const chess::u64 capture = pawnAttacks[allyColor >> 3][blockerLocation] & (this->bitboards[opponentColor] | this->enPassantTargetSquare) & movementMask;
+					const chess::u64 capture = pawnAttacks[allyColor >> 3][blockerLocation] & (this->bitboards[opponentColor] | this->enPassantTargetBitboard) & movementMask;
 					// Only one capture is allowed when pinned
-					if (capture & this->enPassantTargetSquare) {
+					if (capture & this->enPassantTargetBitboard) {
 						// enPassant is possible if pinned
-						const auto moveSpot { ctz64(this->enPassantTargetSquare) };
+						const auto moveSpot { ctz64(this->enPassantTargetBitboard) };
 						legalMoves.append({ .flags            = static_cast<u16>((allyColor ? 0x6000 : 0x7000) | (allyPawn << 4)),
 						                    .originIndex      = blockerLocation,
 						                    .destinationIndex = moveSpot });
@@ -211,8 +211,8 @@ template <chess::boardAnnotations allyColor>
 			const auto currentAllyPawnIndex { ctz64(allyPawns) };
 			chess::u64 singlePush = allyColor == white ? ((1ULL << currentAllyPawnIndex) << 8) & this->empty() : ((1ULL << currentAllyPawnIndex) >> 8) & this->empty();
 			chess::u64 doublePush = allyColor == white ? (singlePush << 8) & this->empty() & 0xFF000000ULL : (singlePush >> 8) & this->empty() & 0xFF00000000ULL;
-			chess::u64 capture    = pawnAttacks[allyColor >> 3][currentAllyPawnIndex] & (this->bitboards[opponentColor] | this->enPassantTargetSquare);
-			const auto enPassant { capture & this->enPassantTargetSquare };
+			chess::u64 capture    = pawnAttacks[allyColor >> 3][currentAllyPawnIndex] & (this->bitboards[opponentColor] | this->enPassantTargetBitboard);
+			const auto enPassant { capture & this->enPassantTargetBitboard };
 			auto notEnPassantCapture { capture ^ enPassant };
 			const auto promotionPush { singlePush & (allyColor == white ? 0xFF00000000000000 : 0xFF) };
 			auto promotionCapture { capture & (allyColor == white ? 0xFF00000000000000 : 0xFF) };
@@ -321,12 +321,12 @@ template <chess::boardAnnotations allyColor>
 		generatePieceMoves<allyQueen>(legalMoves, pinnedPieces, notAlly, (captureMask | blockMask));
 
 		u64 allyPawns { this->bitboards[allyPawn] & ~pinnedPieces };
-		const u64 enPassantTargetSquare_local { checkers & this->bitboards[opponentPawn] ? this->enPassantTargetSquare : 0 };    // En passant is only available if the checking piece is a pawn
+		const u64 enPassantTargetSquare_local { checkers & this->bitboards[opponentPawn] ? this->enPassantTargetBitboard : 0 };    // En passant is only available if the checking piece is a pawn
 		while (allyPawns) {
 			const auto currentAllyPawnIndex { ctz64(allyPawns) };
 			chess::u64 singlePush = allyColor == white ? ((1ULL << currentAllyPawnIndex) << 8) & this->empty() : ((1ULL << currentAllyPawnIndex) >> 8) & this->empty();
 			chess::u64 doublePush = allyColor == white ? (singlePush << 8) & this->empty() & 0xFF000000ULL : (singlePush >> 8) & this->empty() & 0xFF00000000ULL;
-			chess::u64 capture    = pawnAttacks[allyColor >> 3][currentAllyPawnIndex] & (this->bitboards[opponentColor] | this->enPassantTargetSquare);
+			chess::u64 capture    = pawnAttacks[allyColor >> 3][currentAllyPawnIndex] & (this->bitboards[opponentColor] | this->enPassantTargetBitboard);
 			const auto enPassant  = capture & enPassantTargetSquare_local;
 			singlePush &= blockMask;
 			doublePush &= blockMask;
