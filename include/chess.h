@@ -56,7 +56,7 @@ namespace chess {
 		occupied    = 0xF
 	};
 
-	enum squareAnnotations : chess::u8
+	enum square : chess::u8
 	{
 		// clang-format off
 		h1, g1, f1, e1, d1, c1, b1, a1,
@@ -70,8 +70,8 @@ namespace chess {
 		// clang-format on
 	};
 
-	constexpr squareAnnotations operator++(squareAnnotations& square) noexcept {
-		return square = static_cast<squareAnnotations>(square + 1);
+	constexpr chess::square operator++(chess::square& targetSquare) noexcept {
+		return targetSquare = static_cast<chess::square>(targetSquare + 1);
 	}
 
 	enum moveFlags : chess::u16
@@ -124,11 +124,11 @@ namespace chess {
 				constexpr std::array<chess::u64, 8> fileMask { { 0xC0C0C0C0C0C0C0C0ULL, 0x8080808080808080ULL, 0x0ULL, 0x0ULL, 0x0Ull, 0x0ULL, 0x0101010101010101ULL, 0x0303030303030303ULL } };
 				std::array<chess::u64, 64> resultJumps {};
 				chess::u64 defaultJump { 0x0000142200221400ULL };    // Attacks from e4
-				for (chess::squareAnnotations i { h1 }; i <= f4; ++i) {
+				for (chess::square i { h1 }; i <= f4; ++i) {
 					resultJumps[i] = (defaultJump >> (e4 - i)) & ~fileMask[i % 8];
 				}
 
-				for (chess::squareAnnotations i { e4 }; i <= a8; ++i) {
+				for (chess::square i { e4 }; i <= a8; ++i) {
 					resultJumps[i] = (defaultJump << (i - e4)) & ~fileMask[i % 8];
 				}
 
@@ -139,11 +139,11 @@ namespace chess {
 				constexpr std::array<chess::u64, 8> fileMask { { 0x8080808080808080ULL, 0x0ULL, 0x0ULL, 0x0ULL, 0x0Ull, 0x0ULL, 0x0ULL, 0x0101010101010101ULL } };
 				std::array<chess::u64, 64> resultJumps {};
 				chess::u64 defaultAttack { 0x0000001C141C0000ULL };    // Attacks from e4
-				for (chess::squareAnnotations i { h1 }; i <= f4; ++i) {
+				for (chess::square i { h1 }; i <= f4; ++i) {
 					resultJumps[i] = (defaultAttack >> (e4 - i)) & ~fileMask[i % 8];
 				}
 
-				for (chess::squareAnnotations i { e4 }; i <= a8; ++i) {
+				for (chess::square i { e4 }; i <= a8; ++i) {
 					resultJumps[i] = (defaultAttack << (i - e4)) & ~fileMask[i % 8];
 				}
 
@@ -154,12 +154,12 @@ namespace chess {
 				constexpr std::array<chess::u64, 8> fileMask { { 0x8080808080808080ULL, 0x0ULL, 0x0ULL, 0x0ULL, 0x0Ull, 0x0ULL, 0x0ULL, 0x0101010101010101ULL } };
 				std::array<std::array<chess::u64, 64>, 2> resultAttacks {};
 				constexpr chess::u64 defaultAttackWhite { 0x0000000000000280ULL };
-				for (chess::squareAnnotations i { h1 }; i <= a8; ++i) {
+				for (chess::square i { h1 }; i <= a8; ++i) {
 					resultAttacks[1][i] = (defaultAttackWhite << i) & ~fileMask[i % 8];
 				}
 
 				constexpr chess::u64 defaultAttackBlack { 0x0140000000000000ULL };
-				for (chess::squareAnnotations i { h1 }; i <= a8; ++i) {
+				for (chess::square i { h1 }; i <= a8; ++i) {
 					resultAttacks[0][i] = (defaultAttackBlack >> (a8 - i)) & ~fileMask[i % 8];
 				}
 
@@ -178,8 +178,8 @@ namespace chess {
 					       + time_from_string(__TIME__, 3) * 60 /* minutes */
 					       + time_from_string(__TIME__, 6) /* seconds */;
 				}();
-				for (auto& square : result) {
-					for (auto& piece : square) {
+				for (auto& targetSquare : result) {
+					for (auto& piece : targetSquare) {
 						piece    = previous;
 						previous = ((137 * previous + 457) % 922372036854775808ULL);
 						piece ^= previous << 16;
@@ -214,7 +214,7 @@ namespace chess {
 			}
 			return 0x0ULL;
 		};
-		[[nodiscard]] std::string squareToAlgebraic(const chess::squareAnnotations square);
+		[[nodiscard]] std::string squareToAlgebraic(const chess::square targetSquare);
 		[[nodiscard]] constexpr char pieceToChar(const chess::boardAnnotations piece) {
 			return "*pnbrqk**PNBRQK*"[piece];
 		}
@@ -222,18 +222,18 @@ namespace chess {
 
 		// Intrinsic wrapper functions
 		// Count trailing zeros (of a number's binary representation)
-		[[nodiscard]] inline chess::squareAnnotations ctz64(const u64 bitboard) noexcept {
+		[[nodiscard]] inline chess::square ctz64(const u64 bitboard) noexcept {
 #if defined(__clang__) || defined(__GNUC__)
-			return static_cast<chess::squareAnnotations>(__builtin_ctzll(bitboard));
+			return static_cast<chess::square>(__builtin_ctzll(bitboard));
 #else
 			static_assert(false, "Not a supported compiler platform - no known ctz function");
 #endif
 		}
 
 		// Count leading zeros (of a number's binary representation)
-		[[nodiscard]] inline chess::squareAnnotations clz64(const u64 bitboard) noexcept {
+		[[nodiscard]] inline chess::square clz64(const u64 bitboard) noexcept {
 #if defined(__clang__) || defined(__GNUC__)
-			return static_cast<chess::squareAnnotations>(__builtin_clzll(bitboard));
+			return static_cast<chess::square>(__builtin_clzll(bitboard));
 #else
 			static_assert(false, "Not a supported compiler platform - no known clz function");
 #endif
@@ -311,7 +311,7 @@ namespace chess {
 		[[nodiscard]] constexpr chess::u64 destinationSquare() const noexcept { return 1ULL << destinationIndex; }
 		[[nodiscard]] constexpr chess::u16 moveFlags() const noexcept { return flags & 0xFF00; }
 		[[nodiscard]] inline std::string toString() const noexcept {
-			auto result { chess::util::squareToAlgebraic(static_cast<chess::squareAnnotations>(this->originIndex)) + chess::util::squareToAlgebraic(static_cast<chess::squareAnnotations>(this->destinationIndex)) };
+			auto result { chess::util::squareToAlgebraic(static_cast<chess::square>(this->originIndex)) + chess::util::squareToAlgebraic(static_cast<chess::square>(this->destinationIndex)) };
 			if (this->promotionPiece() == 0)
 				return result;
 			else
@@ -358,12 +358,12 @@ namespace chess {
 		template <chess::boardAnnotations attackingColor>
 		[[nodiscard]] chess::u64 attacks() const noexcept;
 		template <chess::boardAnnotations attackingColor>
-		[[nodiscard]] chess::u64 attackers(const chess::squareAnnotations square) const noexcept {
+		[[nodiscard]] chess::u64 attackers(const chess::square targetSquare) const noexcept {
 			using namespace chess::util;
-			return (this->pieceMoves<bishop>(square, this->bitboards[occupied]) & (this->bitboards[constructPiece(bishop, attackingColor)] | this->bitboards[constructPiece(queen, attackingColor)])) |
-			       (this->pieceMoves<rook>(square, this->bitboards[occupied]) & (this->bitboards[constructPiece(rook, attackingColor)] | this->bitboards[constructPiece(queen, attackingColor)])) |
-			       (this->pieceMoves<knight>(square, this->bitboards[occupied]) & this->bitboards[constructPiece(knight, attackingColor)]) |
-			       (constants::pawnAttacks[~attackingColor >> 3][square] & this->bitboards[constructPiece(pawn, attackingColor)]);
+			return (this->pieceMoves<bishop>(targetSquare, this->bitboards[occupied]) & (this->bitboards[constructPiece(bishop, attackingColor)] | this->bitboards[constructPiece(queen, attackingColor)])) |
+			       (this->pieceMoves<rook>(targetSquare, this->bitboards[occupied]) & (this->bitboards[constructPiece(rook, attackingColor)] | this->bitboards[constructPiece(queen, attackingColor)])) |
+			       (this->pieceMoves<knight>(sqtargetSquareuare, this->bitboards[occupied]) & this->bitboards[constructPiece(knight, attackingColor)]) |
+			       (constants::pawnAttacks[~attackingColor >> 3][targetSquare] & this->bitboards[constructPiece(pawn, attackingColor)]);
 		}
 		template <chess::boardAnnotations defendingColor>
 		[[nodiscard]] bool inCheck() const noexcept {

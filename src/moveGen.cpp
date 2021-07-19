@@ -61,7 +61,7 @@ template <chess::boardAnnotations allyColor>
 	const u64 notAlly { ~this->bitboards[allyColor] };
 	staticVector<moveData> legalMoves;    // chess::move = 4 bytes * 254 + 8 byte pointer = 1KB
 
-	const squareAnnotations allyKingLocation { ctz64(this->bitboards[allyKing]) };
+	const chess::square allyKingLocation { ctz64(this->bitboards[allyKing]) };
 
 	// Start with knights and pawns, and then add sliders, as they can pin.
 	u64 checkers = (this->pieceMoves<knight>(allyKingLocation, this->bitboards[occupied]) & this->bitboards[opponentKnight]) |

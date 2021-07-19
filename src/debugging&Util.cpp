@@ -15,7 +15,7 @@ std::string chess::debugging::bitboardToString(u64 bitBoard) {
 	return result;
 }
 
-std::string chess::util::squareToAlgebraic(const chess::squareAnnotations square) {
+std::string chess::util::squareToAlgebraic(const chess::square square) {
 	// clang-format off
 	static constexpr const char* mapping[] {
 		"h1", "g1", "f1", "e1", "d1", "c1", "b1", "a1",
