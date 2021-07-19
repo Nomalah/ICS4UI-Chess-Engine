@@ -324,11 +324,11 @@ namespace chess {
 
 	template <class T = chess::moveData, size_t sz = 1024>
 	class staticVector {
-		 private:
+	private:
 		std::array<T, ((sz - sizeof(T*)) / sizeof(T))> moves;
 		T* insertLocation;
 
-		 public:
+	public:
 		staticVector() :
 			moves {}, insertLocation { moves.data() } {}
 		staticVector(const staticVector<T, sz>& other) :
@@ -366,7 +366,7 @@ namespace chess {
 			       (constants::pawnAttacks[~attackingColor >> 3][square] & this->bitboards[constructPiece(pawn, attackingColor)]);
 		}
 		template <chess::boardAnnotations defendingColor>
-		[[nodiscard]] bool inCheck() const noexcept{
+		[[nodiscard]] bool inCheck() const noexcept {
 			return static_cast<bool>(this->attackers<~defendingColor>(chess::util::ctz64(this->bitboards[chess::util::constructPiece(chess::boardAnnotations::king, defendingColor)])));
 		}
 		template <chess::boardAnnotations piece>

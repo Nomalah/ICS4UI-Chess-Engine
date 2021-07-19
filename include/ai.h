@@ -47,7 +47,7 @@ namespace chess::ai {
 		static_assert(isPowerOfTwo<sz>(), "Transposition table requires a power of two size");
 		// https://github.com/SebLague/Chess-AI/blob/main/Assets/Scripts/Core/TranspositionTable.cs
 		// 24 bytes
-		 public:
+	public:
 		struct tableEntry {
 			u64 key;
 			chess::moveData move;
@@ -56,13 +56,13 @@ namespace chess::ai {
 			int nodeType;
 		};
 
-		 private:
+	private:
 		const chess::game& boardPos;
 		std::unique_ptr<std::array<tableEntry, sz>> tableData;
 		const decltype(tableData->data()) tableDataBegin;
 		size_t overwrites = 0;
 
-		 public:
+	public:
 		transpositionTable(const chess::game& board) :
 			boardPos { board }, tableData { std::make_unique<std::array<tableEntry, sz>>() }, tableDataBegin { tableData->data() }, overwrites { 0 } {}
 
@@ -141,10 +141,10 @@ namespace chess::ai {
 	};
 
 	class bot {
-		 private:
+	private:
 		botWeights internalWeights;
 
-		 public:
+	public:
 		bot(const botWeights& setWeights) :
 			internalWeights { setWeights } {}
 		// Order moves to induce more beta cutoffs

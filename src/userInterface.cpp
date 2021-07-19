@@ -26,12 +26,12 @@
 	if (chess::position::validateFen(fen)) {
 		// Empty position with a valid flag enabled
 		chess::position result {
-			.bitboards             = {},
-			.pieceAtIndex          = {},
-			.flags                 = 0x04,
-			.halfMoveClock         = 0,
+			.bitboards               = {},
+			.pieceAtIndex            = {},
+			.flags                   = 0x04,
+			.halfMoveClock           = 0,
 			.enPassantTargetBitboard = 0,
-			.zobristHash           = 0
+			.zobristHash             = 0
 		};
 		std::stringstream toTokenize { fen };
 		std::array<std::string, 6> tokens;
@@ -154,12 +154,12 @@
 	} else {
 		// Empty position with valid flag not set
 		return {
-			.bitboards             = {},
-			.pieceAtIndex          = {},
-			.flags                 = 0,
-			.halfMoveClock         = 0,
+			.bitboards               = {},
+			.pieceAtIndex            = {},
+			.flags                   = 0,
+			.halfMoveClock           = 0,
 			.enPassantTargetBitboard = 0,
-			.zobristHash           = 0
+			.zobristHash             = 0
 		};
 	}
 }
