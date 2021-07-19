@@ -44,69 +44,69 @@
 		for (const char piece : tokens[0]) {
 			if (piece > '0' && piece <= '9') {
 				for (char _ = 0; _ < piece - '0'; _++, insertIndex--) {
-					result.pieceAtIndex[insertIndex] = boardAnnotations::empty;
+					result.pieceAtIndex[insertIndex] = piece::empty;
 				}
 			} else if (piece != '/') {
 				switch (u64 insertAtSquare = chess::util::bitboardFromIndex(insertIndex); piece) {
 					case 'p':
-						result.pieceAtIndex[insertIndex] = boardAnnotations::blackPawn;
-						result.bitboards[boardAnnotations::black] |= insertAtSquare;
-						result.bitboards[boardAnnotations::blackPawn] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = piece::blackPawn;
+						result.bitboards[piece::black] |= insertAtSquare;
+						result.bitboards[piece::blackPawn] |= insertAtSquare;
 						break;
 					case 'P':
-						result.pieceAtIndex[insertIndex] = boardAnnotations::whitePawn;
-						result.bitboards[boardAnnotations::white] |= insertAtSquare;
-						result.bitboards[boardAnnotations::whitePawn] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = piece::whitePawn;
+						result.bitboards[piece::white] |= insertAtSquare;
+						result.bitboards[piece::whitePawn] |= insertAtSquare;
 						break;
 					case 'n':
-						result.pieceAtIndex[insertIndex] = boardAnnotations::blackKnight;
-						result.bitboards[boardAnnotations::black] |= insertAtSquare;
-						result.bitboards[boardAnnotations::blackKnight] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = piece::blackKnight;
+						result.bitboards[piece::black] |= insertAtSquare;
+						result.bitboards[piece::blackKnight] |= insertAtSquare;
 						break;
 					case 'N':
-						result.pieceAtIndex[insertIndex] = boardAnnotations::whiteKnight;
-						result.bitboards[boardAnnotations::white] |= insertAtSquare;
-						result.bitboards[boardAnnotations::whiteKnight] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = piece::whiteKnight;
+						result.bitboards[piece::white] |= insertAtSquare;
+						result.bitboards[piece::whiteKnight] |= insertAtSquare;
 						break;
 					case 'b':
-						result.pieceAtIndex[insertIndex] = boardAnnotations::blackBishop;
-						result.bitboards[boardAnnotations::black] |= insertAtSquare;
-						result.bitboards[boardAnnotations::blackBishop] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = piece::blackBishop;
+						result.bitboards[piece::black] |= insertAtSquare;
+						result.bitboards[piece::blackBishop] |= insertAtSquare;
 						break;
 					case 'B':
-						result.pieceAtIndex[insertIndex] = boardAnnotations::whiteBishop;
-						result.bitboards[boardAnnotations::white] |= insertAtSquare;
-						result.bitboards[boardAnnotations::whiteBishop] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = piece::whiteBishop;
+						result.bitboards[piece::white] |= insertAtSquare;
+						result.bitboards[piece::whiteBishop] |= insertAtSquare;
 						break;
 					case 'r':
-						result.pieceAtIndex[insertIndex] = boardAnnotations::blackRook;
-						result.bitboards[boardAnnotations::black] |= insertAtSquare;
-						result.bitboards[boardAnnotations::blackRook] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = piece::blackRook;
+						result.bitboards[piece::black] |= insertAtSquare;
+						result.bitboards[piece::blackRook] |= insertAtSquare;
 						break;
 					case 'R':
-						result.pieceAtIndex[insertIndex] = boardAnnotations::whiteRook;
-						result.bitboards[boardAnnotations::white] |= insertAtSquare;
-						result.bitboards[boardAnnotations::whiteRook] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = piece::whiteRook;
+						result.bitboards[piece::white] |= insertAtSquare;
+						result.bitboards[piece::whiteRook] |= insertAtSquare;
 						break;
 					case 'q':
-						result.pieceAtIndex[insertIndex] = boardAnnotations::blackQueen;
-						result.bitboards[boardAnnotations::black] |= insertAtSquare;
-						result.bitboards[boardAnnotations::blackQueen] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = piece::blackQueen;
+						result.bitboards[piece::black] |= insertAtSquare;
+						result.bitboards[piece::blackQueen] |= insertAtSquare;
 						break;
 					case 'Q':
-						result.pieceAtIndex[insertIndex] = boardAnnotations::whiteQueen;
-						result.bitboards[boardAnnotations::white] |= insertAtSquare;
-						result.bitboards[boardAnnotations::whiteQueen] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = piece::whiteQueen;
+						result.bitboards[piece::white] |= insertAtSquare;
+						result.bitboards[piece::whiteQueen] |= insertAtSquare;
 						break;
 					case 'k':
-						result.pieceAtIndex[insertIndex] = boardAnnotations::blackKing;
-						result.bitboards[boardAnnotations::black] |= insertAtSquare;
-						result.bitboards[boardAnnotations::blackKing] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = piece::blackKing;
+						result.bitboards[piece::black] |= insertAtSquare;
+						result.bitboards[piece::blackKing] |= insertAtSquare;
 						break;
 					case 'K':
-						result.pieceAtIndex[insertIndex] = boardAnnotations::whiteKing;
-						result.bitboards[boardAnnotations::white] |= insertAtSquare;
-						result.bitboards[boardAnnotations::whiteKing] |= insertAtSquare;
+						result.pieceAtIndex[insertIndex] = piece::whiteKing;
+						result.bitboards[piece::white] |= insertAtSquare;
+						result.bitboards[piece::whiteKing] |= insertAtSquare;
 						break;
 				}
 				insertIndex -= 1;
@@ -114,7 +114,7 @@
 		}
 
 		// Set turn flag
-		result.flags |= tokens[1] == "w" ? boardAnnotations::white : boardAnnotations::black;
+		result.flags |= tokens[1] == "w" ? piece::white : piece::black;
 
 		// Set castling flags
 		for (char flag : tokens[2]) {
@@ -147,8 +147,8 @@
 		result.fullMoveClock = static_cast<chess::u16>(std::stoul(tokens[5]));
 
 		// Set the zobrist hash of the position]
-		result.bitboards[boardAnnotations::occupied] = result.bitboards[boardAnnotations::white] | result.bitboards[boardAnnotations::black];
-		result.bitboards[boardAnnotations::empty]    = ~result.bitboards[boardAnnotations::occupied];
+		result.bitboards[piece::occupied] = result.bitboards[piece::white] | result.bitboards[piece::black];
+		result.bitboards[piece::empty]    = ~result.bitboards[piece::occupied];
 		result.setZobrist();
 		return result;
 	} else {

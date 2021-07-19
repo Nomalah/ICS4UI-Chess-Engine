@@ -11,7 +11,7 @@
 	}
 }
 
-template <chess::boardAnnotations allyColor>
+template <chess::piece allyColor>
 [[nodiscard]] chess::staticVector<chess::moveData> chess::game::moves() const noexcept {
 	if (this->threeFoldRep() || this->currentPosition().halfMoveClock >= 50) {
 		return staticVector<chess::moveData> {};
@@ -20,12 +20,12 @@ template <chess::boardAnnotations allyColor>
 	return this->currentPosition().moves<allyColor>();
 }
 
-template <chess::boardAnnotations piece>
+template <chess::piece piece>
 void chess::position::generatePieceMoves(chess::staticVector<chess::moveData>& legalMoves, const chess::u64 pinnedPieces, const chess::u64 notAlly, const chess::u64 mask) const noexcept {
 	chess::u64 allyPieces { this->bitboards[piece] & ~pinnedPieces };    // Pieces that are not pinned
 	while (allyPieces) {
 		const chess::u8 currentAllyPieceIndex { chess::util::ctz64(allyPieces) };
-		chess::u64 allyPieceMoves { this->pieceMoves<chess::util::getPieceOf(piece)>(currentAllyPieceIndex, this->bitboards[chess::boardAnnotations::occupied]) & notAlly & mask };
+		chess::u64 allyPieceMoves { this->pieceMoves<chess::util::getPieceOf(piece)>(currentAllyPieceIndex, this->bitboards[chess::piece::occupied]) & notAlly & mask };
 		while (allyPieceMoves) {
 			const auto destinationSquare { chess::util::ctz64(allyPieceMoves) };
 			const auto destinationPiece { this->pieceAtIndex[destinationSquare] };
@@ -38,25 +38,25 @@ void chess::position::generatePieceMoves(chess::staticVector<chess::moveData>& l
 	}
 };
 
-template <chess::boardAnnotations allyColor>
+template <chess::piece allyColor>
 [[nodiscard]] chess::staticVector<chess::moveData> chess::position::moves() const noexcept {
 	using namespace chess;
 	using namespace chess::util;
 	using namespace chess::constants;
-	constexpr boardAnnotations allyPawn { constructPiece(pawn, allyColor) };
-	constexpr boardAnnotations allyKnight { constructPiece(knight, allyColor) };
-	constexpr boardAnnotations allyBishop { constructPiece(bishop, allyColor) };
-	constexpr boardAnnotations allyRook { constructPiece(rook, allyColor) };
-	constexpr boardAnnotations allyQueen { constructPiece(queen, allyColor) };
-	constexpr boardAnnotations allyKing { constructPiece(king, allyColor) };
+	constexpr piece allyPawn { constructPiece(pawn, allyColor) };
+	constexpr piece allyKnight { constructPiece(knight, allyColor) };
+	constexpr piece allyBishop { constructPiece(bishop, allyColor) };
+	constexpr piece allyRook { constructPiece(rook, allyColor) };
+	constexpr piece allyQueen { constructPiece(queen, allyColor) };
+	constexpr piece allyKing { constructPiece(king, allyColor) };
 
-	constexpr boardAnnotations opponentColor { ~allyColor };
-	constexpr boardAnnotations opponentPawn { constructPiece(pawn, opponentColor) };
-	constexpr boardAnnotations opponentKnight { constructPiece(knight, opponentColor) };
-	constexpr boardAnnotations opponentBishop { constructPiece(bishop, opponentColor) };
-	constexpr boardAnnotations opponentRook { constructPiece(rook, opponentColor) };
-	constexpr boardAnnotations opponentQueen { constructPiece(queen, opponentColor) };
-	constexpr boardAnnotations opponentKing { constructPiece(king, opponentColor) };
+	constexpr piece opponentColor { ~allyColor };
+	constexpr piece opponentPawn { constructPiece(pawn, opponentColor) };
+	constexpr piece opponentKnight { constructPiece(knight, opponentColor) };
+	constexpr piece opponentBishop { constructPiece(bishop, opponentColor) };
+	constexpr piece opponentRook { constructPiece(rook, opponentColor) };
+	constexpr piece opponentQueen { constructPiece(queen, opponentColor) };
+	constexpr piece opponentKing { constructPiece(king, opponentColor) };
 
 	const u64 notAlly { ~this->bitboards[allyColor] };
 	staticVector<moveData> legalMoves;    // chess::move = 4 bytes * 254 + 8 byte pointer = 1KB
@@ -295,7 +295,7 @@ template <chess::boardAnnotations allyColor>
 		u64 blockMask { 0 };
 
 		// Mark all pinned pieces - there is no position where a pinned piece can capture the checker
-		const auto markPinned = [&](const auto attackFunction, const chess::boardAnnotations pinningPiece) {
+		const auto markPinned = [&](const auto attackFunction, const chess::piece pinningPiece) {
 			const auto ray = attackFunction(allyKingLocation, this->bitboards[opponentColor]);
 			if (ray & (this->bitboards[pinningPiece] | this->bitboards[opponentQueen])) {
 				if (popcnt64(ray & this->bitboards[allyColor]) == 1) {    // If there is one ally piece inbetween, it's pinned
@@ -409,20 +409,20 @@ template <chess::boardAnnotations allyColor>
 	return legalMoves;
 }
 
-template <chess::boardAnnotations attackingColor>
+template <chess::piece attackingColor>
 [[nodiscard]] chess::u64 chess::position::attacks() const noexcept {
 	using namespace chess::util;
-	constexpr chess::boardAnnotations attackingPawn { constructPiece(pawn, attackingColor) };
-	constexpr chess::boardAnnotations attackingKnight { constructPiece(knight, attackingColor) };
-	constexpr chess::boardAnnotations attackingBishop { constructPiece(bishop, attackingColor) };
-	constexpr chess::boardAnnotations attackingRook { constructPiece(rook, attackingColor) };
-	constexpr chess::boardAnnotations attackingQueen { constructPiece(queen, attackingColor) };
-	constexpr chess::boardAnnotations attackingKing { constructPiece(king, attackingColor) };
+	constexpr chess::piece attackingPawn { constructPiece(pawn, attackingColor) };
+	constexpr chess::piece attackingKnight { constructPiece(knight, attackingColor) };
+	constexpr chess::piece attackingBishop { constructPiece(bishop, attackingColor) };
+	constexpr chess::piece attackingRook { constructPiece(rook, attackingColor) };
+	constexpr chess::piece attackingQueen { constructPiece(queen, attackingColor) };
+	constexpr chess::piece attackingKing { constructPiece(king, attackingColor) };
 
 	chess::u64 resultAttackBoard { 0 };
 
 	// 'occupied squares'
-	const chess::u64 occupiedSquares { this->bitboards[occupied] ^ this->bitboards[boardAnnotations::whiteKing ^ attackingColor] };    // remove the king
+	const chess::u64 occupiedSquares { this->bitboards[occupied] ^ this->bitboards[piece::whiteKing ^ attackingColor] };    // remove the king
 
 	// Find bishop attacks
 	for (chess::u64 remainingBishops { this->bitboards[attackingBishop] | this->bitboards[attackingQueen] }; remainingBishops; zeroLSB(remainingBishops)) {
