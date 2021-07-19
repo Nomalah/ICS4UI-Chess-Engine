@@ -32,6 +32,6 @@ std::string chess::util::squareToAlgebraic(const chess::squareAnnotations square
 }
 
 // Ignoring for the time being, as it is not necessary to either the AI or engine
-[[nodiscard]] bool chess::position::validateFen([[maybe_unused]] const std::string& fen) noexcept {
+[[nodiscard]] bool chess::game::validateFen([[maybe_unused]] const std::string& fen) noexcept {
 	return true;
 }

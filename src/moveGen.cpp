@@ -2,26 +2,17 @@
 
 #include "../include/chess.h"
 
-[[nodiscard]] chess::staticVector<chess::moveData> chess::game::moves() const noexcept {
+[[nodiscard]] chess::moveList chess::game::moves() const noexcept {
 	// Continue with normal move generation
-	if (this->currentPosition().turn() == white) {
-		return this->currentPosition().moves<white>();
+	if (this->turn == chess::boardAnnotations::black) {
+		return this->moves<black>();
 	} else {
-		return this->currentPosition().moves<black>();
+		return this->moves<white>();
 	}
-}
-
-template <chess::boardAnnotations allyColor>
-[[nodiscard]] chess::staticVector<chess::moveData> chess::game::moves() const noexcept {
-	if (this->threeFoldRep() || this->currentPosition().halfMoveClock >= 50) {
-		return staticVector<chess::moveData> {};
-	}
-	// Continue with normal move generation
-	return this->currentPosition().moves<allyColor>();
 }
 
 template <chess::boardAnnotations piece>
-void chess::position::generatePieceMoves(chess::staticVector<chess::moveData>& legalMoves, const chess::u64 pinnedPieces, const chess::u64 notAlly, const chess::u64 mask) const noexcept {
+void chess::game::generatePieceMoves(chess::moveList& legalMoves, const chess::u64 pinnedPieces, const chess::u64 notAlly, const chess::u64 mask) const noexcept {
 	chess::u64 allyPieces { this->bitboards[piece] & ~pinnedPieces };    // Pieces that are not pinned
 	while (allyPieces) {
 		const chess::u8 currentAllyPieceIndex { chess::util::ctz64(allyPieces) };
@@ -39,7 +30,11 @@ void chess::position::generatePieceMoves(chess::staticVector<chess::moveData>& l
 };
 
 template <chess::boardAnnotations allyColor>
-[[nodiscard]] chess::staticVector<chess::moveData> chess::position::moves() const noexcept {
+[[nodiscard]] chess::moveList chess::game::moves() const noexcept {
+	if (this->threeFoldRep() || this->flags.back().halfMoveClock >= 50) {
+		return chess::moveList { false };
+	}
+
 	using namespace chess;
 	using namespace chess::util;
 	using namespace chess::constants;
@@ -59,7 +54,6 @@ template <chess::boardAnnotations allyColor>
 	constexpr boardAnnotations opponentKing { constructPiece(king, opponentColor) };
 
 	const u64 notAlly { ~this->bitboards[allyColor] };
-	staticVector<moveData> legalMoves;    // chess::move = 4 bytes * 254 + 8 byte pointer = 1KB
 
 	const squareAnnotations allyKingLocation { ctz64(this->bitboards[allyKing]) };
 
@@ -71,7 +65,11 @@ template <chess::boardAnnotations allyColor>
 
 	const u64 notAttackedByOpponent { ~this->attacks<opponentColor>() };
 	u64 pinnedPieces { 0 };
-	if (const auto numberOfAttackers { popcnt64(checkers) }; numberOfAttackers == 0) {    // Not in check
+	const auto numberOfAttackers { popcnt64(checkers) };
+
+	moveList legalMoves { static_cast<bool>(numberOfAttackers) };
+
+	if (numberOfAttackers == 0) {    // Not in check
 		// Calculate all pinned pieces
 		auto calculateVerticalPin = [=, &pinnedPieces, &legalMoves, this](const auto attackFunction) {
 			const auto ray = attackFunction(allyKingLocation, this->bitboards[opponentColor]);
@@ -89,8 +87,8 @@ template <chess::boardAnnotations allyColor>
 						zeroLSB(movementMask);
 					}
 				} else if (ray & this->bitboards[allyPawn]) {
-					chess::u64 singlePush = allyColor == white ? ((1ULL << blockerLocation) << 8) & this->empty() : ((1ULL << blockerLocation) >> 8) & this->empty();
-					chess::u64 doublePush = allyColor == white ? (singlePush << 8) & this->empty() & 0xFF000000ULL : (singlePush >> 8) & this->empty() & 0xFF00000000ULL;
+					chess::u64 singlePush = allyColor == white ? ((1ULL << blockerLocation) << 8) & this->bitboards[empty] : ((1ULL << blockerLocation) >> 8) & this->bitboards[empty];
+					chess::u64 doublePush = allyColor == white ? (singlePush << 8) & this->bitboards[empty] & 0xFF000000ULL : (singlePush >> 8) & this->bitboards[empty] & 0xFF00000000ULL;
 					if (singlePush) {    // not double pawn push
 						auto moveSpot { ctz64(singlePush) };
 						legalMoves.append({ .flags            = static_cast<u16>(allyPawn << 4),
@@ -141,11 +139,11 @@ template <chess::boardAnnotations allyColor>
 						zeroLSB(movementMask);
 					}
 				} else if (this->pieceAtIndex[blockerLocation] == allyPawn) {
-					const chess::u64 capture = pawnAttacks[allyColor >> 3][blockerLocation] & (this->bitboards[opponentColor] | this->enPassantTargetBitboard) & movementMask;
+					const chess::u64 capture = pawnAttacks[allyColor >> 3][blockerLocation] & (this->bitboards[opponentColor] | this->flags.back().enPassantTargetBitboard) & movementMask;
 					// Only one capture is allowed when pinned
-					if (capture & this->enPassantTargetBitboard) {
+					if (capture & this->flags.back().enPassantTargetBitboard) {
 						// enPassant is possible if pinned
-						const auto moveSpot { ctz64(this->enPassantTargetBitboard) };
+						const auto moveSpot { ctz64(this->flags.back().enPassantTargetBitboard) };
 						legalMoves.append({ .flags            = static_cast<u16>((allyColor ? 0x6000 : 0x7000) | (allyPawn << 4)),
 						                    .originIndex      = blockerLocation,
 						                    .destinationIndex = moveSpot });
@@ -175,14 +173,14 @@ template <chess::boardAnnotations allyColor>
 		generatePieceMoves<allyQueen>(legalMoves, pinnedPieces, notAlly);
 
 		if constexpr (allyColor == white) {
-			if (this->castleWK()) {
+			if (this->flags.back().castleWK) {
 				if (!(this->bitboards[occupied] & (bitboardFromIndex(g1) | bitboardFromIndex(f1))) && (notAttackedByOpponent & bitboardFromIndex(f1)) && (notAttackedByOpponent & bitboardFromIndex(g1))) {
 					legalMoves.append({ .flags            = static_cast<u16>(0x2000 | (whiteKing << 4)),
 					                    .originIndex      = e1,
 					                    .destinationIndex = g1 });
 				}
 			}
-			if (this->castleWQ()) {
+			if (this->flags.back().castleWQ) {
 				if (!(this->bitboards[occupied] & (bitboardFromIndex(d1) | bitboardFromIndex(c1) | bitboardFromIndex(b1))) && (notAttackedByOpponent & bitboardFromIndex(d1)) && (notAttackedByOpponent & bitboardFromIndex(c1))) {
 					legalMoves.append({ .flags            = static_cast<u16>(0x3000 | (whiteKing << 4)),
 					                    .originIndex      = e1,
@@ -190,14 +188,14 @@ template <chess::boardAnnotations allyColor>
 				}
 			}
 		} else {
-			if (this->castleBK()) {
+			if (this->flags.back().castleBK) {
 				if (!(this->bitboards[occupied] & (bitboardFromIndex(g8) | bitboardFromIndex(f8))) && (notAttackedByOpponent & bitboardFromIndex(f8)) && (notAttackedByOpponent & bitboardFromIndex(g8))) {
 					legalMoves.append({ .flags            = static_cast<u16>(0x4000 | (blackKing << 4)),
 					                    .originIndex      = e8,
 					                    .destinationIndex = g8 });
 				}
 			}
-			if (this->castleBQ()) {
+			if (this->flags.back().castleBQ) {
 				if (!(this->bitboards[occupied] & (bitboardFromIndex(d8) | bitboardFromIndex(c8) | bitboardFromIndex(b8))) && (notAttackedByOpponent & bitboardFromIndex(d8)) && (notAttackedByOpponent & bitboardFromIndex(c8))) {
 					legalMoves.append({ .flags            = static_cast<u16>(0x5000 | (blackKing << 4)),
 					                    .originIndex      = e8,
@@ -209,10 +207,10 @@ template <chess::boardAnnotations allyColor>
 		u64 allyPawns { this->bitboards[allyPawn] & ~pinnedPieces };
 		while (allyPawns) {
 			const auto currentAllyPawnIndex { ctz64(allyPawns) };
-			chess::u64 singlePush = allyColor == white ? ((1ULL << currentAllyPawnIndex) << 8) & this->empty() : ((1ULL << currentAllyPawnIndex) >> 8) & this->empty();
-			chess::u64 doublePush = allyColor == white ? (singlePush << 8) & this->empty() & 0xFF000000ULL : (singlePush >> 8) & this->empty() & 0xFF00000000ULL;
-			chess::u64 capture    = pawnAttacks[allyColor >> 3][currentAllyPawnIndex] & (this->bitboards[opponentColor] | this->enPassantTargetBitboard);
-			const auto enPassant { capture & this->enPassantTargetBitboard };
+			chess::u64 singlePush = allyColor == white ? ((1ULL << currentAllyPawnIndex) << 8) & this->bitboards[empty] : ((1ULL << currentAllyPawnIndex) >> 8) & this->bitboards[empty];
+			chess::u64 doublePush = allyColor == white ? (singlePush << 8) & this->bitboards[empty] & 0xFF000000ULL : (singlePush >> 8) & this->bitboards[empty] & 0xFF00000000ULL;
+			chess::u64 capture    = pawnAttacks[allyColor >> 3][currentAllyPawnIndex] & (this->bitboards[opponentColor] | this->flags.back().enPassantTargetBitboard);
+			const auto enPassant { capture & this->flags.back().enPassantTargetBitboard };
 			auto notEnPassantCapture { capture ^ enPassant };
 			const auto promotionPush { singlePush & (allyColor == white ? 0xFF00000000000000 : 0xFF) };
 			auto promotionCapture { capture & (allyColor == white ? 0xFF00000000000000 : 0xFF) };
@@ -247,10 +245,9 @@ template <chess::boardAnnotations allyColor>
 
 			if (enPassant) [[unlikely]] {
 				const u8 moveSpot { static_cast<u8>(ctz64(enPassant)) };
-				auto newPos { this->move({ .flags            = static_cast<u16>((allyColor ? 0x6000 : 0x7000) | allyPawn << 4),
-					                       .originIndex      = currentAllyPawnIndex,
-					                       .destinationIndex = moveSpot }) };
-				if (!newPos.attackers<opponentColor>(allyKingLocation)) [[likely]] {
+				const u64 postCaptureOccupied { this->bitboards[boardAnnotations::occupied] ^ (enPassant | (1ULL << currentAllyPawnIndex) | (allyColor == white ? enPassant >> 8 : enPassant << 8)) };
+
+				if (!((rayAttack<east>(allyKingLocation, postCaptureOccupied) | rayAttack<west>(allyKingLocation, postCaptureOccupied)) & (this->bitboards[opponentRook] | this->bitboards[opponentQueen]))) [[likely]] {
 					legalMoves.append({ .flags            = static_cast<u16>((allyColor ? 0x6000 : 0x7000) | allyPawn << 4),
 					                    .originIndex      = currentAllyPawnIndex,
 					                    .destinationIndex = moveSpot });
@@ -321,12 +318,12 @@ template <chess::boardAnnotations allyColor>
 		generatePieceMoves<allyQueen>(legalMoves, pinnedPieces, notAlly, (captureMask | blockMask));
 
 		u64 allyPawns { this->bitboards[allyPawn] & ~pinnedPieces };
-		const u64 enPassantTargetSquare_local { checkers & this->bitboards[opponentPawn] ? this->enPassantTargetBitboard : 0 };    // En passant is only available if the checking piece is a pawn
+		const u64 enPassantTargetSquare_local { checkers & this->bitboards[opponentPawn] ? this->flags.back().enPassantTargetBitboard : 0 };    // En passant is only available if the checking piece is a pawn
 		while (allyPawns) {
 			const auto currentAllyPawnIndex { ctz64(allyPawns) };
-			chess::u64 singlePush = allyColor == white ? ((1ULL << currentAllyPawnIndex) << 8) & this->empty() : ((1ULL << currentAllyPawnIndex) >> 8) & this->empty();
-			chess::u64 doublePush = allyColor == white ? (singlePush << 8) & this->empty() & 0xFF000000ULL : (singlePush >> 8) & this->empty() & 0xFF00000000ULL;
-			chess::u64 capture    = pawnAttacks[allyColor >> 3][currentAllyPawnIndex] & (this->bitboards[opponentColor] | this->enPassantTargetBitboard);
+			chess::u64 singlePush = allyColor == white ? ((1ULL << currentAllyPawnIndex) << 8) & this->bitboards[empty] : ((1ULL << currentAllyPawnIndex) >> 8) & this->bitboards[empty];
+			chess::u64 doublePush = allyColor == white ? (singlePush << 8) & this->bitboards[empty] & 0xFF000000ULL : (singlePush >> 8) & this->bitboards[empty] & 0xFF00000000ULL;
+			chess::u64 capture    = pawnAttacks[allyColor >> 3][currentAllyPawnIndex] & (this->bitboards[opponentColor] | this->flags.back().enPassantTargetBitboard);
 			const auto enPassant  = capture & enPassantTargetSquare_local;
 			singlePush &= blockMask;
 			doublePush &= blockMask;
@@ -355,10 +352,8 @@ template <chess::boardAnnotations allyColor>
 				                    .destinationIndex = moveSpot });
 			} else if (enPassant) [[unlikely]] {
 				const u8 moveSpot { static_cast<u8>(ctz64(enPassant)) };
-				auto newPos { this->move({ .flags            = static_cast<u16>((allyColor ? 0x6000 : 0x7000) | allyPawn << 4),
-					                       .originIndex      = currentAllyPawnIndex,
-					                       .destinationIndex = moveSpot }) };
-				if (!newPos.attackers<opponentColor>(allyKingLocation)) [[likely]] {
+				const u64 postCaptureOccupied { this->bitboards[boardAnnotations::occupied] ^ (enPassant | (1ULL << currentAllyPawnIndex) | (allyColor == white ? enPassant >> 8 : enPassant << 8)) };
+				if (!((rayAttack<east>(allyKingLocation, postCaptureOccupied) | rayAttack<west>(allyKingLocation, postCaptureOccupied)) & (this->bitboards[opponentRook] | this->bitboards[opponentQueen]))) [[likely]] {
 					legalMoves.append({ .flags            = static_cast<u16>((allyColor ? 0x6000 : 0x7000) | allyPawn << 4),
 					                    .originIndex      = currentAllyPawnIndex,
 					                    .destinationIndex = moveSpot });
@@ -410,7 +405,7 @@ template <chess::boardAnnotations allyColor>
 }
 
 template <chess::boardAnnotations attackingColor>
-[[nodiscard]] chess::u64 chess::position::attacks() const noexcept {
+[[nodiscard]] chess::u64 chess::game::attacks() const noexcept {
 	using namespace chess::util;
 	constexpr chess::boardAnnotations attackingPawn { constructPiece(pawn, attackingColor) };
 	constexpr chess::boardAnnotations attackingKnight { constructPiece(knight, attackingColor) };

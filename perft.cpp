@@ -61,21 +61,20 @@ perftResult perft(size_t testDepth, const std::string& fen) {
             }
             return legalMoves.size();
         }
-
         std::size_t nodes = 0;
-        TIME(chess::staticVector validMoves { gameToTest.moves() }, movesTime);
+        TIME(chess::moveList validMoves { gameToTest.moves() }, movesTime);
         for (chess::moveData validMove : validMoves) {
-            TIME(gameToTest.move(validMove), moveTime);
+            TIME(gameToTest.make(validMove), moveTime);
             nodes += perftTest(perftTest, depth - 1);
-            TIME(gameToTest.undo(), undoTime);
+            TIME(gameToTest.unmake(validMove), undoTime);
         }
         return nodes;
 	};
 
 	for (auto& validMove : gameToTest.moves()) {
-		gameToTest.move(validMove);
+		gameToTest.make(validMove);
 		result.moves.push_back({ validMove, perftTest(perftTest, testDepth - 1) });
-		gameToTest.undo();
+		gameToTest.unmake(validMove);
 		result.total += result.moves.back().second;
 	}
 	return result;
@@ -125,8 +124,8 @@ int main(int argc, const char* argv[]) {
 	};
 
 	if (argc == 3) {
-		std::string fen              = argv[1];
-		chess::position testPosition = chess::position::fromFen(fen);
+		std::string fen = argv[1];
+		chess::game testPosition { fen };
 		std::cout << "\u001b[34m[Test]@Position=" << fen << std::endl;
 		std::cout << "\u001b[33m" << testPosition.ascii() << "\u001b[34m" << std::endl;
 		auto startTime         = std::chrono::high_resolution_clock::now();
@@ -150,7 +149,7 @@ int main(int argc, const char* argv[]) {
 	for (const perftTest& test : tests) {
 		std::cout << "\u001b[34m[Test]@Position=" << test.testFen << std::endl;
 		fenTotalTests++;
-		std::string testFenResult { chess::game { test.testFen }.currentPosition().toFen() };
+		std::string testFenResult { chess::game { test.testFen }.toFen() };
 		if (testFenResult == test.testFen) {
 			fenPassedTests++;
 			std::cout << "\t[Fen]\u001b[32m[Passed Test]\u001b[0m -> [Result]:[" << testFenResult << "]" << std::endl;

@@ -70,8 +70,16 @@ namespace chess {
 		// clang-format on
 	};
 
-	constexpr squareAnnotations operator++(squareAnnotations& square) noexcept {
-		return square = static_cast<squareAnnotations>(square + 1);
+	constexpr chess::squareAnnotations operator++(chess::squareAnnotations& square) noexcept {
+		return square = static_cast<chess::squareAnnotations>(square + 1);
+	}
+
+	constexpr chess::squareAnnotations operator+(const chess::squareAnnotations square, const int offset) noexcept {
+		return static_cast<chess::squareAnnotations>(static_cast<int>(square) + offset);
+	}
+
+	constexpr chess::squareAnnotations operator-(const chess::squareAnnotations square, const int offset) noexcept {
+		return static_cast<chess::squareAnnotations>(static_cast<int>(square) - offset);
 	}
 
 	enum moveFlags : chess::u16
@@ -96,6 +104,7 @@ namespace chess {
 
 		constexpr u64 bitboardFull { 0xFFFFFFFFFFFFFFFFULL };
 		constexpr u64 bitboardIter { 1ULL << 63 };
+		constexpr u64 maxMoves { 218 };    // Max number of legal moves in a position that is possible
 
 		namespace {
 			constexpr std::array<std::array<chess::u64, 64>, 8> generateAttackRays() {
@@ -201,18 +210,18 @@ namespace chess {
 	}    // namespace constants
 
 	namespace util {
-		[[nodiscard]] constexpr u8 algebraicToSquare(const std::string& algebraic) noexcept {
+		[[nodiscard]] constexpr chess::squareAnnotations algebraicToSquare(const std::string& algebraic) noexcept {
 			if (algebraic.length() == 2) {
 				u8 total { 0 };
 				if (algebraic[0] >= 'a' && algebraic[0] <= 'h') {
 					total += 7 - algebraic[0] + 'a';
 					if (algebraic[1] >= '1' && algebraic[1] <= '8') {
 						total += (algebraic[1] - '1') * 8;
-						return total;
+						return static_cast<chess::squareAnnotations>(total);
 					}
 				}
 			}
-			return 0x0ULL;
+			return chess::squareAnnotations::h1;
 		};
 		[[nodiscard]] std::string squareToAlgebraic(const chess::squareAnnotations square);
 		[[nodiscard]] constexpr char pieceToChar(const chess::boardAnnotations piece) {
@@ -322,39 +331,60 @@ namespace chess {
 		return lhs.originIndex == rhs.originIndex && lhs.destinationIndex == rhs.destinationIndex && lhs.flags == rhs.flags;
 	};
 
-	template <class T = chess::moveData, size_t sz = 1024>
-	class staticVector {
-		 private:
-		std::array<T, ((sz - sizeof(T*)) / sizeof(T))> moves;
-		T* insertLocation;
-
-		 public:
-		staticVector() :
-			moves {}, insertLocation { moves.data() } {}
-		staticVector(const staticVector<T, sz>& other) :
-			moves { other.moves }, insertLocation { (this->moves.data() - other.moves.data()) + other.insertLocation } {}
-		inline void append(const T& moveToInsert) noexcept { *(insertLocation++) = moveToInsert; }
+	class moveList {
+	public:
+		moveList(const bool _inCheck) :
+			insertLocation { &moves[0] }, inCheck { _inCheck }, moves {} {}
+		moveList(const chess::moveList& other) :
+			insertLocation { (this->moves.data() - other.moves.data()) + other.insertLocation }, inCheck { other.inCheck }, moves { other.moves } {}
+		inline void append(const chess::moveData& moveToInsert) noexcept { *(insertLocation++) = moveToInsert; }
 		inline void pop() noexcept { --insertLocation; }
-		[[nodiscard]] inline T& operator[](std::size_t index) noexcept { return moves[index]; }
-		[[nodiscard]] inline T* begin() noexcept { return moves.data(); }
-		[[nodiscard]] inline T* end() noexcept { return insertLocation; }
+		[[nodiscard]] inline chess::moveData& operator[](std::size_t index) noexcept { return moves[index]; }
+		[[nodiscard]] inline chess::moveData* begin() noexcept { return moves.data(); }
+		[[nodiscard]] inline chess::moveData* end() noexcept { return insertLocation; }
 		[[nodiscard]] inline chess::u64 size() const noexcept { return static_cast<chess::u64>(insertLocation - moves.data()); }
+
+	private:
+		chess::moveData* insertLocation;
+		bool inCheck;
+		std::array<chess::moveData, chess::constants::maxMoves> moves;
 	};
 
-	struct position {
-		// Most to least information dense
-		std::array<chess::u64, 16> bitboards;
-		std::array<chess::boardAnnotations, 64> pieceAtIndex;
+	class game {
+	public:
+		game() = delete;
+		game(const std::string& fen) noexcept;
 
-		chess::u8 flags;
-		chess::u8 halfMoveClock;
-		chess::u64 enPassantTargetBitboard;
-		chess::u64 zobristHash;
-		chess::u16 fullMoveClock;
+		template <chess::boardAnnotations defendingColor>
+		[[nodiscard]] bool inCheck() const noexcept {
+			return static_cast<bool>(this->attackers<~defendingColor>(chess::util::ctz64(this->bitboards[chess::util::constructPiece(chess::boardAnnotations::king, defendingColor)])));
+		}
 
+		[[nodiscard]] std::string ascii() const noexcept;
+		[[nodiscard]] std::string toFen() const noexcept;
+
+		[[nodiscard]] static bool validateFen(const std::string& fen) noexcept;
+
+		[[nodiscard]] moveList moves() const noexcept;
 		template <chess::boardAnnotations allyColor>
-		[[nodiscard]] staticVector<moveData> moves() const noexcept;
-		[[nodiscard]] position move(moveData desiredMove) const noexcept;
+		[[nodiscard]] moveList moves() const noexcept;
+		[[nodiscard]] constexpr u8 result() const noexcept { return 0; };    // unused
+		[[nodiscard]] constexpr bool finished() const noexcept { return this->threeFoldRep() || this->moves().size() == 0; }
+		[[nodiscard]] constexpr bool threeFoldRep() const noexcept {
+			size_t count = 0;
+			for (size_t i = 0; i < flags.size(); i += 2) {
+				if (flags[i].zobristHash == flags.back().zobristHash)
+					count++;
+			}
+			return count >= 3;
+		}
+		void make(const moveData desiredMove) noexcept;
+		void make(const std::string& desiredMove) noexcept;
+		void unmake(const moveData desiredMove) noexcept;
+		std::array<chess::u64, 16> bitboards;
+		u64 getZobrist() const noexcept { return this->flags.back().zobristHash; }
+
+	private:
 		template <chess::boardAnnotations attackingColor>
 		[[nodiscard]] chess::u64 attacks() const noexcept;
 		template <chess::boardAnnotations attackingColor>
@@ -365,10 +395,16 @@ namespace chess {
 			       (this->pieceMoves<knight>(square, this->bitboards[occupied]) & this->bitboards[constructPiece(knight, attackingColor)]) |
 			       (constants::pawnAttacks[~attackingColor >> 3][square] & this->bitboards[constructPiece(pawn, attackingColor)]);
 		}
-		template <chess::boardAnnotations defendingColor>
-		[[nodiscard]] bool inCheck() const noexcept{
-			return static_cast<bool>(this->attackers<~defendingColor>(chess::util::ctz64(this->bitboards[chess::util::constructPiece(chess::boardAnnotations::king, defendingColor)])));
+
+		constexpr void setZobrist() noexcept {
+			this->flags.back().zobristHash = 0;
+			for (size_t index = 0; index < 64; index++) {
+				this->flags.back().zobristHash ^= chess::constants::zobristBitStrings[index][pieceAtIndex[index]];
+			}
 		}
+
+		template <chess::boardAnnotations piece>
+		void generatePieceMoves(chess::moveList& legalMoves, const chess::u64 pinnedPieces, const chess::u64 notAlly, const chess::u64 mask = chess::constants::bitboardFull) const noexcept;
 		template <chess::boardAnnotations piece>
 		[[nodiscard]] inline chess::u64 pieceMoves(const u8 squareFrom, const u64 occupied) const noexcept { return chess::u64 {}; };
 		template <>
@@ -392,56 +428,26 @@ namespace chess {
 			return chess::constants::kingAttacks[squareFrom];
 		}
 
-		template <chess::boardAnnotations piece>
-		void generatePieceMoves(chess::staticVector<chess::moveData>& legalMoves, const chess::u64 pinnedPieces, const chess::u64 notAlly, const chess::u64 mask = chess::constants::bitboardFull) const noexcept;
+	private:
+		std::array<chess::boardAnnotations, 64> pieceAtIndex;
 
-		[[nodiscard]] std::string ascii() const noexcept;
-		[[nodiscard]] constexpr chess::boardAnnotations turn() const noexcept { return static_cast<chess::boardAnnotations>(flags & 0x08); }    // 0 - 1 (1 bit)
-		[[nodiscard]] constexpr chess::u64 empty() const noexcept { return bitboards[chess::boardAnnotations::empty]; }
-		[[nodiscard]] constexpr bool valid() const noexcept { return flags & 0x04; }    // 0 - 1 (1 bit)
-		[[nodiscard]] constexpr bool castleWK() const noexcept { return flags & 0x80; }
-		[[nodiscard]] constexpr bool castleWQ() const noexcept { return flags & 0x40; }
-		[[nodiscard]] constexpr bool castleBK() const noexcept { return flags & 0x20; }
-		[[nodiscard]] constexpr bool castleBQ() const noexcept { return flags & 0x10; }
-		constexpr void setZobrist() noexcept {
-			this->zobristHash = 0;
-			for (size_t index = 0; index < 64; index++) {
-				this->zobristHash ^= chess::constants::zobristBitStrings[index][pieceAtIndex[index]];
-			}
-		}
+		chess::boardAnnotations turn;
+		chess::u16 fullMoveClock;
 
-		[[nodiscard]] std::string toFen() const noexcept;
+		struct irreversible {
+			chess::u64 zobristHash;
+			chess::u64 enPassantTargetBitboard;
+			bool castleWK               : 1;
+			bool castleWQ               : 1;
+			bool castleBK               : 1;
+			bool castleBQ               : 1;
+			unsigned char halfMoveClock : 6;
+		};
 
-		[[nodiscard]] static position fromFen(const std::string& fen) noexcept;
-		[[nodiscard]] static bool validateFen(const std::string& fen) noexcept;
+		std::vector<irreversible> flags;
 	};
 
-	struct game {
-		std::vector<position> gameHistory;
-
-		game(const std::string& fen) noexcept :
-			gameHistory { { chess::position::fromFen(fen) } } {}
-
-		[[nodiscard]] staticVector<moveData> moves() const noexcept;
-		template <chess::boardAnnotations allyColor>
-		[[nodiscard]] staticVector<moveData> moves() const noexcept;
-		[[nodiscard]] constexpr u8 result() const noexcept { return 0; };    // unused
-		[[nodiscard]] constexpr bool finished() const noexcept { return this->threeFoldRep() || this->moves().size() == 0; }
-		[[nodiscard]] constexpr bool threeFoldRep() const noexcept {
-			size_t count = 0;
-			for (size_t i = 0; i < gameHistory.size(); i += 2) {
-				if (gameHistory[i].zobristHash == gameHistory.back().zobristHash)
-					count++;
-			}
-			return count >= 3;
-		}
-		[[nodiscard]] inline const position& currentPosition() const noexcept { return gameHistory.back(); }
-		void move(const moveData desiredMove) noexcept;
-		void move(const std::string& uciMove) noexcept;
-		bool undo() noexcept;
-	};
-
-	[[nodiscard]] inline game defaultGame() noexcept { return game("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"); };
+	[[nodiscard]] inline chess::game defaultGame() noexcept { return chess::game("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"); };
 
 	namespace debugging {
 		std::string bitboardToString(u64 bitBoard);
