@@ -2,7 +2,7 @@
 
 #include "../include/chess.hpp"
 
-[[nodiscard]] chess::staticVector<chess::moveData> chess::game::moves() const noexcept {
+[[nodiscard]] chess::moveList chess::game::moves() const noexcept {
 	// Continue with normal move generation
 	if (this->currentPosition().turn() == white) {
 		return this->currentPosition().moves<white>();
@@ -12,16 +12,16 @@
 }
 
 template <chess::piece allyColor>
-[[nodiscard]] chess::staticVector<chess::moveData> chess::game::moves() const noexcept {
+[[nodiscard]] chess::moveList chess::game::moves() const noexcept {
 	if (this->threeFoldRep() || this->currentPosition().halfMoveClock >= 50) {
-		return staticVector<chess::moveData> {};
+		return chess::moveList {};
 	}
 	// Continue with normal move generation
 	return this->currentPosition().moves<allyColor>();
 }
 
 template <chess::piece piece>
-void chess::position::generatePieceMoves(chess::staticVector<chess::moveData>& legalMoves, const chess::u64 pinnedPieces, const chess::u64 notAlly, const chess::u64 mask) const noexcept {
+void chess::position::generatePieceMoves(chess::moveList& legalMoves, const chess::u64 pinnedPieces, const chess::u64 notAlly, const chess::u64 mask) const noexcept {
 	chess::u64 allyPieces { this->bitboards[piece] & ~pinnedPieces };    // Pieces that are not pinned
 	while (allyPieces) {
 		const chess::u8 currentAllyPieceIndex { chess::util::ctz64(allyPieces) };
@@ -39,7 +39,7 @@ void chess::position::generatePieceMoves(chess::staticVector<chess::moveData>& l
 };
 
 template <chess::piece allyColor>
-[[nodiscard]] chess::staticVector<chess::moveData> chess::position::moves() const noexcept {
+[[nodiscard]] chess::moveList chess::position::moves() const noexcept {
 	using namespace chess;
 	using namespace chess::util;
 	using namespace chess::constants;
@@ -59,7 +59,7 @@ template <chess::piece allyColor>
 	constexpr piece opponentKing { constructPiece(king, opponentColor) };
 
 	const u64 notAlly { ~this->bitboards[allyColor] };
-	staticVector<moveData> legalMoves;    // chess::move = 4 bytes * 254 + 8 byte pointer = 1KB
+	moveList legalMoves;    // chess::move = 4 bytes * 254 + 8 byte pointer = 1KB
 
 	const chess::square allyKingLocation { ctz64(this->bitboards[allyKing]) };
 

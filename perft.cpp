@@ -63,8 +63,8 @@ perftResult perft(size_t testDepth, const std::string& fen) {
         }
 
         std::size_t nodes = 0;
-        TIME(chess::staticVector validMoves { gameToTest.moves() }, movesTime);
-        for (chess::moveData validMove : validMoves) {
+        TIME(auto validMoves { gameToTest.moves() }, movesTime);
+        for (auto validMove : validMoves) {
             TIME(gameToTest.move(validMove), moveTime);
             nodes += perftTest(perftTest, depth - 1);
             TIME(gameToTest.undo(), undoTime);

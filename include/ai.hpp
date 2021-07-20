@@ -148,9 +148,9 @@ namespace chess::ai {
 		bot(const botWeights& setWeights) :
 			internalWeights { setWeights } {}
 		// Order moves to induce more beta cutoffs
-		template <size_t TTsz, size_t moveListsz>
-		void orderMoves(staticVector<moveData, moveListsz>& moveList, const transpositionTable<TTsz>& TT) const noexcept {
-			std::array<int, moveListsz> moveEvaluationHeuristicList {};
+		template <size_t TTsz>
+		void orderMoves(moveList& moveList, const transpositionTable<TTsz>& TT) const noexcept {
+			std::array<int, chess::constants::maxMoves> moveEvaluationHeuristicList {};
 			const auto hashMove { TT.getStoredMove() };
 			auto evaluateInsertLocation { moveEvaluationHeuristicList.begin() };
 			for (const auto moveToEvaluate : moveList) {

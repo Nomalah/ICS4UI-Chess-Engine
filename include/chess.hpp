@@ -33,27 +33,25 @@ namespace chess {
 		return lhs.originIndex == rhs.originIndex && lhs.destinationIndex == rhs.destinationIndex && lhs.flags == rhs.flags;
 	};
 
-	template <class T = chess::moveData, size_t sz = 1024>
-	class staticVector {
-	private:
-		std::array<T, ((sz - sizeof(T*)) / sizeof(T))> moves;
-		T* insertLocation;
-
+	class moveList {
 	public:
-		staticVector() :
+		moveList() :
 			moves {}, insertLocation { moves.data() } {}
-		staticVector(const staticVector<T, sz>& other) :
+		moveList(const moveList& other) :
 			moves { other.moves }, insertLocation { (this->moves.data() - other.moves.data()) + other.insertLocation } {}
-		inline void append(const T& moveToInsert) noexcept { *(insertLocation++) = moveToInsert; }
+		inline void append(const chess::moveData& moveToInsert) noexcept { *(insertLocation++) = moveToInsert; }
 		inline void pop() noexcept { --insertLocation; }
-		[[nodiscard]] inline T& operator[](std::size_t index) noexcept { return moves[index]; }
-		[[nodiscard]] inline T* begin() noexcept { return moves.data(); }
-		[[nodiscard]] inline T* end() noexcept { return insertLocation; }
+		[[nodiscard]] inline chess::moveData& operator[](std::size_t index) noexcept { return moves[index]; }
+		[[nodiscard]] inline chess::moveData* begin() noexcept { return moves.data(); }
+		[[nodiscard]] inline chess::moveData* end() noexcept { return insertLocation; }
 		[[nodiscard]] inline chess::u64 size() const noexcept { return static_cast<chess::u64>(insertLocation - moves.data()); }
+
+	private:
+		std::array<chess::moveData, chess::constants::maxMoves> moves;
+		chess::moveData* insertLocation;
 	};
 
 	struct position {
-		// Most to least information dense
 		std::array<chess::u64, 16> bitboards;
 		std::array<chess::piece, 64> pieceAtIndex;
 
@@ -64,7 +62,7 @@ namespace chess {
 		chess::u16 fullMoveClock;
 
 		template <chess::piece allyColor>
-		[[nodiscard]] staticVector<moveData> moves() const noexcept;
+		[[nodiscard]] chess::moveList moves() const noexcept;
 		[[nodiscard]] position move(moveData desiredMove) const noexcept;
 		template <chess::piece attackingColor>
 		[[nodiscard]] chess::u64 attacks() const noexcept;
@@ -104,7 +102,7 @@ namespace chess {
 		}
 
 		template <chess::piece targetPiece>
-		void generatePieceMoves(chess::staticVector<chess::moveData>& legalMoves, const chess::u64 pinnedPieces, const chess::u64 notAlly, const chess::u64 mask = chess::constants::bitboardFull) const noexcept;
+		void generatePieceMoves(chess::moveList& legalMoves, const chess::u64 pinnedPieces, const chess::u64 notAlly, const chess::u64 mask = chess::constants::bitboardFull) const noexcept;
 
 		[[nodiscard]] std::string ascii() const noexcept;
 		[[nodiscard]] constexpr chess::piece turn() const noexcept { return static_cast<chess::piece>(flags & 0x08); }    // 0 - 1 (1 bit)
@@ -133,9 +131,9 @@ namespace chess {
 		game(const std::string& fen) noexcept :
 			gameHistory { { chess::position::fromFen(fen) } } {}
 
-		[[nodiscard]] staticVector<moveData> moves() const noexcept;
+		[[nodiscard]] chess::moveList moves() const noexcept;
 		template <chess::piece allyColor>
-		[[nodiscard]] staticVector<moveData> moves() const noexcept;
+		[[nodiscard]] chess::moveList moves() const noexcept;
 		[[nodiscard]] constexpr u8 result() const noexcept { return 0; };    // unused
 		[[nodiscard]] constexpr bool finished() const noexcept { return this->threeFoldRep() || this->moves().size() == 0; }
 		[[nodiscard]] constexpr bool threeFoldRep() const noexcept {

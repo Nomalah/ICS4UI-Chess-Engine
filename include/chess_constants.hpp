@@ -6,6 +6,7 @@
 namespace chess::constants {
 	constexpr chess::u64 bitboardFull { 0xFFFFFFFFFFFFFFFFULL };
 	constexpr chess::u64 bitboardIter { 1ULL << 63 };
+    constexpr chess::u64 maxMoves { 218 }; // Maximum number of moves reachable in a position
 
 	namespace {
 		constexpr std::array<std::array<chess::u64, 64>, 8> generateAttackRays() {
