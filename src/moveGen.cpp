@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "../include/chess.h"
+#include "../include/chess.hpp"
 
 [[nodiscard]] chess::staticVector<chess::moveData> chess::game::moves() const noexcept {
 	// Continue with normal move generation

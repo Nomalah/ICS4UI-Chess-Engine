@@ -4,7 +4,7 @@
 #include <utility>
 #include <vector>
 
-#include "include/chess.h"
+#include "include/chess.hpp"
 
 struct timing {
 	size_t totalRuns;

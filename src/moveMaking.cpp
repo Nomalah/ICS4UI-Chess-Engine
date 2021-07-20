@@ -3,7 +3,7 @@
 #include <utility>
 #include <cassert>
 
-#include "../include/chess.h"
+#include "../include/chess.hpp"
 
 void chess::game::move(const chess::moveData desiredMove) noexcept {
 	gameHistory.push_back(gameHistory.back().move(desiredMove));
@@ -20,7 +20,7 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 	// Remove the piece from it's origin square
 	result.bitboards[chess::util::colorOf(desiredMove.movePiece())] ^= desiredMove.originSquare();    // Colour only
 	result.bitboards[desiredMove.movePiece()] ^= desiredMove.originSquare();                          // Colour and Piece
-	result.pieceAtIndex[desiredMove.originIndex] = piece::empty;                           // Set index value to Empty
+	result.pieceAtIndex[desiredMove.originIndex] = piece::empty;                                      // Set index value to Empty
 	switch (desiredMove.moveFlags()) {
 		case chess::moveFlags::capture:
 			result.halfMoveClock = 0;                                                                                  // Capture
