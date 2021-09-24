@@ -76,7 +76,7 @@ namespace chess {
 		}
 		template <chess::piece defendingColor>
 		[[nodiscard]] bool inCheck() const noexcept {
-			return static_cast<bool>(this->attackers<~defendingColor>(chess::util::ctz64(this->bitboards[chess::util::constructPiece(chess::piece::king, defendingColor)])));
+			return static_cast<bool>(this->attackers<static_cast<chess::piece>(defendingColor ^ chess::piece::white)>(chess::util::ctz64(this->bitboards[chess::util::constructPiece(chess::piece::king, defendingColor)])));
 		}
 		template <chess::piece targetPiece>
 		[[nodiscard]] inline chess::u64 pieceMoves(const u8 squareFrom, const u64 occupied) const noexcept { return chess::u64 {}; };

@@ -1,7 +1,7 @@
 #ifndef NMLH_CHESS_AI_H
 #define NMLH_CHESS_AI_H
 
-#include "chess.h"
+#include "chess.hpp"
 #include <algorithm>
 #include <limits>
 #include <cmath>

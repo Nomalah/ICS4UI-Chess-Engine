@@ -79,7 +79,7 @@ template <chess::piece allyColor>
 				pinnedPieces |= ray & this->bitboards[allyColor];
 				auto movementMask { ray & notAlly };
 				auto blockerLocation { ctz64(ray & this->bitboards[allyColor]) };
-				if (ray & (this->bitboards[allyRook] | ray & this->bitboards[allyQueen])) {
+				if (ray & (this->bitboards[allyRook] | this->bitboards[allyQueen])) {
 					while (movementMask) {
 						const auto moveSpot      = ctz64(movementMask);
 						const auto capturedPiece = this->pieceAtIndex[moveSpot];

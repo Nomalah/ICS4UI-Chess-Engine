@@ -2,7 +2,7 @@
 
 #define AI_MAX_PLY 5
 
-#include "include/ai.h"
+#include "include/ai.hpp"
 
 int main(int argc, const char* argv[]) {
 	const chess::ai::bot nomalahCustomDesignedBot {
