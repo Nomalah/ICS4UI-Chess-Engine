@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vector>
 
-#include "include/chess.h"
+#include "include/chess.hpp"
 
 int main() {
 	// One player game
