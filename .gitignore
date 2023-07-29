@@ -11,3 +11,5 @@ ai.dSYM
 aiVsPlayer.dSYM
 lichessEngine
 lichessEngine.dSYM
+geneticBotEvaluate
+trainEvolutionaryBot

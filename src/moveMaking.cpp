@@ -5,101 +5,101 @@
 
 #include "../include/chess.h"
 
-void chess::game::move(const chess::moveData desiredMove) noexcept {
-	gameHistory.push_back(gameHistory.back().move(desiredMove));
+void chess::game::make(const chess::moveData desiredMove) noexcept {
+	internalPosition.make(desiredMove);
+	zobristHashes.push_back(internalPosition.zobristHash);
 }
 
-[[nodiscard]] chess::position chess::position::move(chess::moveData desiredMove) const noexcept {
+void chess::position::make(const chess::moveData desiredMove) noexcept {
 	using namespace chess::util::constants;
-	chess::position result       = *this;
-	result.enPassantTargetSquare = 0x0;
-	result.halfMoveClock++;
-	chess::position::nextTurn(result);
+	this->enPassantTargetSquare = 0x0;
+	this->halfMoveClock++;
+	chess::position::nextTurn(*this);
 	// Remove the piece from it's origin square
-	result.bitboards[chess::util::colorOf(desiredMove.movePiece())] &= ~desiredMove.originSquare();    // Colour only
-	result.bitboards[desiredMove.movePiece()] &= ~desiredMove.originSquare();                          // Colour and Piece
-	result.pieceAtIndex[desiredMove.originIndex] = chess::util::nullOf(desiredMove.movePiece());       // Set index value to null / Empty
+	this->bitboards[chess::util::colorOf(desiredMove.movePiece())] &= ~desiredMove.originSquare();    // Colour only
+	this->bitboards[desiredMove.movePiece()] &= ~desiredMove.originSquare();                          // Colour and Piece
+	this->pieceAtIndex[desiredMove.originIndex] = null;                                               // Set index value to null / Empty
 	switch (desiredMove.moveFlags()) {
 		case 0x1000:
-			result.halfMoveClock = 0;                                                                                   // Capture
-			result.bitboards[chess::util::colorOf(desiredMove.capturedPiece())] &= ~desiredMove.destinationSquare();    // Delete captured piece's colour
-			result.bitboards[desiredMove.capturedPiece()] &= ~desiredMove.destinationSquare();                          // Delete captured piece
+			this->halfMoveClock = 0;                                                                                   // Capture
+			this->bitboards[chess::util::colorOf(desiredMove.capturedPiece())] &= ~desiredMove.destinationSquare();    // Delete captured piece's colour
+			this->bitboards[desiredMove.capturedPiece()] &= ~desiredMove.destinationSquare();                          // Delete captured piece
 			[[fallthrough]];
-		case 0x0000:                                                                                               // Quiet move
-			result.bitboards[chess::util::colorOf(desiredMove.movePiece())] |= desiredMove.destinationSquare();    // Colour only
-			result.bitboards[desiredMove.movePiece()] |= desiredMove.destinationSquare();                          // Colour and Piece
-			result.pieceAtIndex[desiredMove.destinationIndex] = desiredMove.movePiece();                           // fill index value
+		case 0x0000:                                                                                              // Quiet move
+			this->bitboards[chess::util::colorOf(desiredMove.movePiece())] |= desiredMove.destinationSquare();    // Colour only
+			this->bitboards[desiredMove.movePiece()] |= desiredMove.destinationSquare();                          // Colour and Piece
+			this->pieceAtIndex[desiredMove.destinationIndex] = desiredMove.movePiece();                           // fill index value
 			break;
 
-		case 0x1100 ... 0x1F00:                                                                                         // Capture (Promotion)
-			result.bitboards[chess::util::colorOf(desiredMove.capturedPiece())] &= ~desiredMove.destinationSquare();    // Delete captured piece's colour
-			result.bitboards[desiredMove.capturedPiece()] &= ~desiredMove.destinationSquare();                          // Delete captured piece
+		case 0x1100 ... 0x1F00:                                                                                        // Capture (Promotion)
+			this->bitboards[chess::util::colorOf(desiredMove.capturedPiece())] &= ~desiredMove.destinationSquare();    // Delete captured piece's colour
+			this->bitboards[desiredMove.capturedPiece()] &= ~desiredMove.destinationSquare();                          // Delete captured piece
 			[[fallthrough]];
-		case 0x0100 ... 0x0F00:                                                                                         // Promotion
-			result.bitboards[chess::util::colorOf(desiredMove.promotionPiece())] |= desiredMove.destinationSquare();    // Colour only
-			result.bitboards[desiredMove.promotionPiece()] |= desiredMove.destinationSquare();                          // Colour and Piece
-			result.pieceAtIndex[desiredMove.destinationIndex] = desiredMove.promotionPiece();                           // fill index value
+		case 0x0100 ... 0x0F00:                                                                                        // Promotion
+			this->bitboards[chess::util::colorOf(desiredMove.promotionPiece())] |= desiredMove.destinationSquare();    // Colour only
+			this->bitboards[desiredMove.promotionPiece()] |= desiredMove.destinationSquare();                          // Colour and Piece
+			this->pieceAtIndex[desiredMove.destinationIndex] = desiredMove.promotionPiece();                           // fill index value
 			break;
 
-		case 0x2000:                               // White Kingside
-			result.bitboards[white] ^= 0x7;        // flip the bits for the white bitboard
-			result.bitboards[whiteRook] ^= 0x5;    // Flip the bits for the castling rook
-			result.bitboards[whiteKing] = 0x2;
-			result.pieceAtIndex[h1]     = whiteNull;
-			result.pieceAtIndex[g1]     = whiteKing;
-			result.pieceAtIndex[f1]     = whiteRook;
+		case 0x2000:                              // White Kingside
+			this->bitboards[white] ^= 0x7;        // flip the bits for the white bitboard
+			this->bitboards[whiteRook] ^= 0x5;    // Flip the bits for the castling rook
+			this->bitboards[whiteKing] = 0x2;
+			this->pieceAtIndex[h1]     = null;
+			this->pieceAtIndex[g1]     = whiteKing;
+			this->pieceAtIndex[f1]     = whiteRook;
 			break;
-		case 0x3000:                                // White Queenside
-			result.bitboards[white] ^= 0xB0;        // flip the bits for the white bitboard
-			result.bitboards[whiteRook] ^= 0x90;    // Flip the bits for the castling rook
-			result.bitboards[whiteKing] = 0x20;
-			result.pieceAtIndex[a1]     = whiteNull;
-			result.pieceAtIndex[c1]     = whiteKing;
-			result.pieceAtIndex[d1]     = whiteRook;
+		case 0x3000:                               // White Queenside
+			this->bitboards[white] ^= 0xB0;        // flip the bits for the white bitboard
+			this->bitboards[whiteRook] ^= 0x90;    // Flip the bits for the castling rook
+			this->bitboards[whiteKing] = 0x20;
+			this->pieceAtIndex[a1]     = null;
+			this->pieceAtIndex[c1]     = whiteKing;
+			this->pieceAtIndex[d1]     = whiteRook;
 			break;
-		case 0x4000:                                                 // Black Kingside
-			result.bitboards[black] ^= 0x0700000000000000ULL;        // flip the bits for the black bitboard
-			result.bitboards[blackRook] ^= 0x0500000000000000ULL;    // Flip the bits for the castling rook
-			result.bitboards[blackKing] = 0x0200000000000000ULL;
-			result.pieceAtIndex[h8]     = blackNull;
-			result.pieceAtIndex[g8]     = blackKing;
-			result.pieceAtIndex[f8]     = blackRook;
+		case 0x4000:                                                // Black Kingside
+			this->bitboards[black] ^= 0x0700000000000000ULL;        // flip the bits for the black bitboard
+			this->bitboards[blackRook] ^= 0x0500000000000000ULL;    // Flip the bits for the castling rook
+			this->bitboards[blackKing] = 0x0200000000000000ULL;
+			this->pieceAtIndex[h8]     = null;
+			this->pieceAtIndex[g8]     = blackKing;
+			this->pieceAtIndex[f8]     = blackRook;
 			break;
-		case 0x5000:                                                 // Black Queenside
-			result.bitboards[black] ^= 0xB000000000000000ULL;        // flip the bits for the black bitboard
-			result.bitboards[blackRook] ^= 0x9000000000000000ULL;    // Flip the bits for the castling rook
-			result.bitboards[blackKing] = 0x2000000000000000ULL;
-			result.pieceAtIndex[a8]     = whiteNull;
-			result.pieceAtIndex[c8]     = blackKing;
-			result.pieceAtIndex[d8]     = blackRook;
+		case 0x5000:                                                // Black Queenside
+			this->bitboards[black] ^= 0xB000000000000000ULL;        // flip the bits for the black bitboard
+			this->bitboards[blackRook] ^= 0x9000000000000000ULL;    // Flip the bits for the castling rook
+			this->bitboards[blackKing] = 0x2000000000000000ULL;
+			this->pieceAtIndex[a8]     = null;
+			this->pieceAtIndex[c8]     = blackKing;
+			this->pieceAtIndex[d8]     = blackRook;
 			break;
 		case 0x6000:    // White taking black en passent
-			result.bitboards[white] |= desiredMove.destinationSquare();
-			result.bitboards[whitePawn] |= desiredMove.destinationSquare();
-			result.bitboards[black] &= ~(desiredMove.destinationSquare() >> 8);
-			result.bitboards[blackPawn] &= ~(desiredMove.destinationSquare() >> 8);
-			result.pieceAtIndex[desiredMove.destinationIndex]     = whitePawn;
-			result.pieceAtIndex[desiredMove.destinationIndex - 8] = blackNull;
+			this->bitboards[white] |= desiredMove.destinationSquare();
+			this->bitboards[whitePawn] |= desiredMove.destinationSquare();
+			this->bitboards[black] &= ~(desiredMove.destinationSquare() >> 8);
+			this->bitboards[blackPawn] &= ~(desiredMove.destinationSquare() >> 8);
+			this->pieceAtIndex[desiredMove.destinationIndex]     = whitePawn;
+			this->pieceAtIndex[desiredMove.destinationIndex - 8] = null;
 			break;
 		case 0x7000:    // Black taking white en passent
-			result.bitboards[black] |= desiredMove.destinationSquare();
-			result.bitboards[blackPawn] |= desiredMove.destinationSquare();
-			result.bitboards[white] &= ~(desiredMove.destinationSquare() << 8);
-			result.bitboards[whitePawn] &= ~(desiredMove.destinationSquare() << 8);
-			result.pieceAtIndex[desiredMove.destinationIndex]     = blackPawn;
-			result.pieceAtIndex[desiredMove.destinationIndex + 8] = whiteNull;
+			this->bitboards[black] |= desiredMove.destinationSquare();
+			this->bitboards[blackPawn] |= desiredMove.destinationSquare();
+			this->bitboards[white] &= ~(desiredMove.destinationSquare() << 8);
+			this->bitboards[whitePawn] &= ~(desiredMove.destinationSquare() << 8);
+			this->pieceAtIndex[desiredMove.destinationIndex]     = blackPawn;
+			this->pieceAtIndex[desiredMove.destinationIndex + 8] = null;
 			break;
-		case 0x8000:                                                           // White double pawn push
-			result.bitboards[white] |= desiredMove.destinationSquare();        // Colour only
-			result.bitboards[whitePawn] |= desiredMove.destinationSquare();    // Colour and Piece
-			result.pieceAtIndex[desiredMove.destinationIndex] = whitePawn;     // fill index value
-			result.enPassantTargetSquare                      = desiredMove.destinationSquare() >> 8;
+		case 0x8000:                                                          // White double pawn push
+			this->bitboards[white] |= desiredMove.destinationSquare();        // Colour only
+			this->bitboards[whitePawn] |= desiredMove.destinationSquare();    // Colour and Piece
+			this->pieceAtIndex[desiredMove.destinationIndex] = whitePawn;     // fill index value
+			this->enPassantTargetSquare                      = desiredMove.destinationSquare() >> 8;
 			break;
-		case 0x9000:                                                           // Black double pawn push
-			result.bitboards[black] |= desiredMove.destinationSquare();        // Colour only
-			result.bitboards[blackPawn] |= desiredMove.destinationSquare();    // Colour and Piece
-			result.pieceAtIndex[desiredMove.destinationIndex] = blackPawn;     // fill index value
-			result.enPassantTargetSquare                      = desiredMove.destinationSquare() << 8;
+		case 0x9000:                                                          // Black double pawn push
+			this->bitboards[black] |= desiredMove.destinationSquare();        // Colour only
+			this->bitboards[blackPawn] |= desiredMove.destinationSquare();    // Colour and Piece
+			this->pieceAtIndex[desiredMove.destinationIndex] = blackPawn;     // fill index value
+			this->enPassantTargetSquare                      = desiredMove.destinationSquare() << 8;
 			break;
 		default:
 			std::cerr << "Unknown Move: " << std::hex << desiredMove.moveFlags() << '\n';
@@ -110,21 +110,21 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 	// Invalidate castling
 	switch (desiredMove.movePiece()) {
 		case blackRook:
-			result.flags &= desiredMove.originIndex == 56 ? ~0x20 : (desiredMove.originIndex == 63 ? ~0x10 : ~0x0);
+			this->flags &= desiredMove.originIndex == 56 ? ~0x20 : (desiredMove.originIndex == 63 ? ~0x10 : ~0x0);
 			break;
 		case blackKing:
-			result.flags &= ~(0x20 | 0x10);
+			this->flags &= ~(0x20 | 0x10);
 			break;
 		case whiteRook:
-			result.flags &= desiredMove.originIndex == 0 ? ~0x80 : (desiredMove.originIndex == 7 ? ~0x40 : ~0x0);
+			this->flags &= desiredMove.originIndex == 0 ? ~0x80 : (desiredMove.originIndex == 7 ? ~0x40 : ~0x0);
 			break;
 		case whiteKing:
-			result.flags &= ~(0x80 | 0x40);
+			this->flags &= ~(0x80 | 0x40);
 			break;
 		case whitePawn:
 			[[fallthrough]];
 		case blackPawn:
-			result.halfMoveClock = 0;
+			this->halfMoveClock = 0;
 			break;
 		default:
 			break;
@@ -133,19 +133,19 @@ void chess::game::move(const chess::moveData desiredMove) noexcept {
 	// Invalidate castling
 	switch (desiredMove.capturedPiece()) {
 		case blackRook:
-			result.flags &= desiredMove.destinationIndex == 56 ? ~0x20 : (desiredMove.destinationIndex == 63 ? ~0x10 : ~0x0);
+			this->flags &= desiredMove.destinationIndex == 56 ? ~0x20 : (desiredMove.destinationIndex == 63 ? ~0x10 : ~0x0);
 			break;
 		case whiteRook:
-			result.flags &= desiredMove.destinationIndex == 0 ? ~0x80 : (desiredMove.destinationIndex == 7 ? ~0x40 : ~0x0);
+			this->flags &= desiredMove.destinationIndex == 0 ? ~0x80 : (desiredMove.destinationIndex == 7 ? ~0x40 : ~0x0);
 			break;
 		default:
 			break;
 	}
-	result.setZobrist();
-	return result;
+	this->bitboards[boardAnnotations::occupied] = this->bitboards[white] | this->bitboards[black];
+	this->setZobrist();
 }
 
-void chess::game::move(const std::string& uciMove) noexcept {
+void chess::game::make(const std::string& uciMove) noexcept {
 	chess::moveData libraryMove {
 		.originIndex      = chess::util::algebraicToSquare(uciMove.substr(0, 2)),
 		.destinationIndex = chess::util::algebraicToSquare(uciMove.substr(2, 2)),
@@ -218,12 +218,149 @@ void chess::game::move(const std::string& uciMove) noexcept {
 		libraryMove.flags |= chess::util::isPiece(libraryMove.capturedPiece());
 	}
 
-	this->move(libraryMove);
+	this->make(libraryMove);
 }
 
-bool chess::game::undo() noexcept {
-	if (gameHistory.size() > 1) {
-		gameHistory.pop_back();
+void chess::position::unmake(const chess::moveData desiredMove) noexcept {
+	using namespace chess::util::constants;
+	this->enPassantTargetSquare = 0x0;
+	this->halfMoveClock++;
+	chess::position::nextTurn(*this);
+	// Remove the piece from it's origin square
+	this->bitboards[chess::util::colorOf(desiredMove.movePiece())] &= ~desiredMove.originSquare();    // Colour only
+	this->bitboards[desiredMove.movePiece()] &= ~desiredMove.originSquare();                          // Colour and Piece
+	this->pieceAtIndex[desiredMove.originIndex] = null;                                               // Set index value to null / Empty
+	switch (desiredMove.moveFlags()) {
+		case 0x1000:
+			this->halfMoveClock = 0;                                                                                   // Capture
+			this->bitboards[chess::util::colorOf(desiredMove.capturedPiece())] &= ~desiredMove.destinationSquare();    // Delete captured piece's colour
+			this->bitboards[desiredMove.capturedPiece()] &= ~desiredMove.destinationSquare();                          // Delete captured piece
+			[[fallthrough]];
+		case 0x0000:                                                                                              // Quiet move
+			this->bitboards[chess::util::colorOf(desiredMove.movePiece())] |= desiredMove.destinationSquare();    // Colour only
+			this->bitboards[desiredMove.movePiece()] |= desiredMove.destinationSquare();                          // Colour and Piece
+			this->pieceAtIndex[desiredMove.destinationIndex] = desiredMove.movePiece();                           // fill index value
+			break;
+
+		case 0x1100 ... 0x1F00:                                                                                        // Capture (Promotion)
+			this->bitboards[chess::util::colorOf(desiredMove.capturedPiece())] &= ~desiredMove.destinationSquare();    // Delete captured piece's colour
+			this->bitboards[desiredMove.capturedPiece()] &= ~desiredMove.destinationSquare();                          // Delete captured piece
+			[[fallthrough]];
+		case 0x0100 ... 0x0F00:                                                                                        // Promotion
+			this->bitboards[chess::util::colorOf(desiredMove.promotionPiece())] |= desiredMove.destinationSquare();    // Colour only
+			this->bitboards[desiredMove.promotionPiece()] |= desiredMove.destinationSquare();                          // Colour and Piece
+			this->pieceAtIndex[desiredMove.destinationIndex] = desiredMove.promotionPiece();                           // fill index value
+			break;
+
+		case 0x2000:                              // White Kingside
+			this->bitboards[white] ^= 0x7;        // flip the bits for the white bitboard
+			this->bitboards[whiteRook] ^= 0x5;    // Flip the bits for the castling rook
+			this->bitboards[whiteKing] = 0x2;
+			this->pieceAtIndex[h1]     = null;
+			this->pieceAtIndex[g1]     = whiteKing;
+			this->pieceAtIndex[f1]     = whiteRook;
+			break;
+		case 0x3000:                               // White Queenside
+			this->bitboards[white] ^= 0xB0;        // flip the bits for the white bitboard
+			this->bitboards[whiteRook] ^= 0x90;    // Flip the bits for the castling rook
+			this->bitboards[whiteKing] = 0x20;
+			this->pieceAtIndex[a1]     = null;
+			this->pieceAtIndex[c1]     = whiteKing;
+			this->pieceAtIndex[d1]     = whiteRook;
+			break;
+		case 0x4000:                                                // Black Kingside
+			this->bitboards[black] ^= 0x0700000000000000ULL;        // flip the bits for the black bitboard
+			this->bitboards[blackRook] ^= 0x0500000000000000ULL;    // Flip the bits for the castling rook
+			this->bitboards[blackKing] = 0x0200000000000000ULL;
+			this->pieceAtIndex[h8]     = null;
+			this->pieceAtIndex[g8]     = blackKing;
+			this->pieceAtIndex[f8]     = blackRook;
+			break;
+		case 0x5000:                                                // Black Queenside
+			this->bitboards[black] ^= 0xB000000000000000ULL;        // flip the bits for the black bitboard
+			this->bitboards[blackRook] ^= 0x9000000000000000ULL;    // Flip the bits for the castling rook
+			this->bitboards[blackKing] = 0x2000000000000000ULL;
+			this->pieceAtIndex[a8]     = null;
+			this->pieceAtIndex[c8]     = blackKing;
+			this->pieceAtIndex[d8]     = blackRook;
+			break;
+		case 0x6000:    // White taking black en passent
+			this->bitboards[white] |= desiredMove.destinationSquare();
+			this->bitboards[whitePawn] |= desiredMove.destinationSquare();
+			this->bitboards[black] &= ~(desiredMove.destinationSquare() >> 8);
+			this->bitboards[blackPawn] &= ~(desiredMove.destinationSquare() >> 8);
+			this->pieceAtIndex[desiredMove.destinationIndex]     = whitePawn;
+			this->pieceAtIndex[desiredMove.destinationIndex - 8] = null;
+			break;
+		case 0x7000:    // Black taking white en passent
+			this->bitboards[black] |= desiredMove.destinationSquare();
+			this->bitboards[blackPawn] |= desiredMove.destinationSquare();
+			this->bitboards[white] &= ~(desiredMove.destinationSquare() << 8);
+			this->bitboards[whitePawn] &= ~(desiredMove.destinationSquare() << 8);
+			this->pieceAtIndex[desiredMove.destinationIndex]     = blackPawn;
+			this->pieceAtIndex[desiredMove.destinationIndex + 8] = null;
+			break;
+		case 0x8000:                                                          // White double pawn push
+			this->bitboards[white] |= desiredMove.destinationSquare();        // Colour only
+			this->bitboards[whitePawn] |= desiredMove.destinationSquare();    // Colour and Piece
+			this->pieceAtIndex[desiredMove.destinationIndex] = whitePawn;     // fill index value
+			this->enPassantTargetSquare                      = desiredMove.destinationSquare() >> 8;
+			break;
+		case 0x9000:                                                          // Black double pawn push
+			this->bitboards[black] |= desiredMove.destinationSquare();        // Colour only
+			this->bitboards[blackPawn] |= desiredMove.destinationSquare();    // Colour and Piece
+			this->pieceAtIndex[desiredMove.destinationIndex] = blackPawn;     // fill index value
+			this->enPassantTargetSquare                      = desiredMove.destinationSquare() << 8;
+			break;
+		default:
+			std::cerr << "Unknown Move: " << std::hex << desiredMove.moveFlags() << '\n';
+			assert(false);
+			break;
+	}
+
+	// Invalidate castling
+	switch (desiredMove.movePiece()) {
+		case blackRook:
+			this->flags &= desiredMove.originIndex == 56 ? ~0x20 : (desiredMove.originIndex == 63 ? ~0x10 : ~0x0);
+			break;
+		case blackKing:
+			this->flags &= ~(0x20 | 0x10);
+			break;
+		case whiteRook:
+			this->flags &= desiredMove.originIndex == 0 ? ~0x80 : (desiredMove.originIndex == 7 ? ~0x40 : ~0x0);
+			break;
+		case whiteKing:
+			this->flags &= ~(0x80 | 0x40);
+			break;
+		case whitePawn:
+			[[fallthrough]];
+		case blackPawn:
+			this->halfMoveClock = 0;
+			break;
+		default:
+			break;
+	}
+
+	// Invalidate castling
+	switch (desiredMove.capturedPiece()) {
+		case blackRook:
+			this->flags &= desiredMove.destinationIndex == 56 ? ~0x20 : (desiredMove.destinationIndex == 63 ? ~0x10 : ~0x0);
+			break;
+		case whiteRook:
+			this->flags &= desiredMove.destinationIndex == 0 ? ~0x80 : (desiredMove.destinationIndex == 7 ? ~0x40 : ~0x0);
+			break;
+		default:
+			break;
+	}
+	this->bitboards[boardAnnotations::occupied] = this->bitboards[white] | this->bitboards[black];
+	this->setZobrist();
+}
+
+
+bool chess::game::unmake(const chess::moveData desiredMove) noexcept {
+	if (zobristHashes.size() > 1) {
+		zobristHashes.pop_back();
+		internalPosition.unmake(desiredMove);
 		return true;
 	} else {
 		return false;

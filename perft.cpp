@@ -66,9 +66,9 @@ perftResult perft(size_t testDepth, const std::string& fen) {
         std::size_t nodes = 0;
         TIME(chess::staticVector validMoves { gameToTest.moves() }, movesTime);
         for (chess::moveData validMove : validMoves) {
-            TIME(gameToTest.move(validMove), moveTime);
+            TIME(gameToTest.make(validMove), moveTime);
             nodes += perftTest(perftTest, depth - 1);
-            TIME(gameToTest.undo(), undoTime);
+            TIME(gameToTest.unmake(validMove), undoTime);
         }
         if (individualTest) {
             if ((nodes & 255) == 255) {
@@ -79,9 +79,9 @@ perftResult perft(size_t testDepth, const std::string& fen) {
 	};
 
 	for (auto& validMove : gameToTest.moves()) {
-		gameToTest.move(validMove);
+		gameToTest.make(validMove);
 		result.moves.push_back({ validMove, perftTest(perftTest, testDepth - 1) });
-		gameToTest.undo();
+		gameToTest.unmake(validMove);
 		result.total += result.moves.back().second;
 	}
 	return result;

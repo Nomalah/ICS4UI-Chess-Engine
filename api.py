@@ -8,9 +8,9 @@ activeChallenges = deque()
 botInGame = False
 botIsPlayingWhite = None
 botId = None
-supportedTimeControl = ["15+10"]
+supportedTimeControl = ["15+10", "5+3", "30+20", "30+0", "60+0"]
 supportedVariant = ["Std"]
-apiKey = ""
+apiKey = "ZgOZcuowFQDmadIN"
 apiHeader = {"Authorization": "Bearer " + apiKey}
 
 def dest(urlShort):

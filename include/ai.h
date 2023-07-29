@@ -5,7 +5,7 @@
 #include <limits>
 #include <cmath>
 #include <memory>
-
+#include <chrono>
 #define SWAP(a, b) do{ auto _c { (a) }; (a) = (b); (b) = _c; }while(0)
 
 namespace chess::ai {
@@ -135,10 +135,10 @@ namespace chess::ai {
 
 	class bot {
 		 private:
-		botWeights internalWeights;
-
+		const botWeights internalWeights;
+    
 		 public:
-        bot(const botWeights& setWeights) : internalWeights{setWeights} {}
+        constexpr bot(const botWeights& setWeights) : internalWeights{setWeights} {}
         // Order moves to induce more beta cutoffs
         template<size_t TTsz, size_t moveListsz>
         void orderMoves(staticVector<moveData, moveListsz>& moveList, const transpositionTable<TTsz>& TT) const noexcept {
@@ -217,60 +217,75 @@ namespace chess::ai {
             static auto positionalValue = [&toEvaluate](chess::u8 piece) -> int {
                 static constexpr chess::u64 positionValueCenter      = 0x0000001818000000;
                 static constexpr chess::u64 positionValueLargeCenter = 0x00003C3C3C3C0000;
-                //static constexpr int pieceValues[] = {0, -100, -300, -310, -500, -900, 0, 0, 0, 100, 300, 310, 500, 900, 0};
                 return popcnt64(toEvaluate.bitboards[piece] & positionValueCenter) * 50 + popcnt64(toEvaluate.bitboards[piece] & positionValueLargeCenter) * 25;
             };
 
             int result = 0;
-            result += pieceValue(whitePawn) + positionalValue(whitePawn);
-            result += pieceValue(whiteKnight) + positionalValue(whiteKnight);
-            result += pieceValue(whiteBishop) + positionalValue(whiteBishop);
-            result += pieceValue(whiteRook) + positionalValue(whiteRook);
-            result += pieceValue(whiteQueen) + positionalValue(whiteQueen);
-            result -= pieceValue(blackPawn) + positionalValue(blackPawn);
-            result -= pieceValue(blackKnight) + positionalValue(blackKnight);
-            result -= pieceValue(blackBishop) + positionalValue(blackBishop);
-            result -= pieceValue(blackRook) + positionalValue(blackRook);
-            result -= pieceValue(blackQueen) + positionalValue(blackQueen);
+			result += pieceValue(whitePawn);
+			result += pieceValue(whiteKnight);
+			result += pieceValue(whiteBishop);
+            result += pieceValue(whiteRook);
+            result += pieceValue(whiteQueen);
+            result -= pieceValue(blackPawn);
+            result -= pieceValue(blackKnight);
+            result -= pieceValue(blackBishop);
+            result -= pieceValue(blackRook);
+            result -= pieceValue(blackQueen);
+            result += positionalValue(white);
+            result -= positionalValue(black);
             return toEvaluate.turn() ? result - toEvaluate.halfMoveClock * 4 : -result + toEvaluate.halfMoveClock * 4;
         }
 	};
 
-	chess::moveData bestMove(chess::game& gameToTest, const chess::ai::bot& botToUse) {
-#ifdef AI_DEBUG
-		static size_t totalNodes = 0;
-#endif
-		[[maybe_unused]] size_t nodes = 0;
+    struct bestMoveOutput {
+        chess::moveData bestMove;
+		size_t leafs;
+		size_t nodes;
+	};
+	bestMoveOutput bestMove(chess::game& gameToTest, const chess::ai::bot& botToUse) {
+		size_t leafs = 0;
+		size_t nodes = 0;
 		struct minimaxOutput {
 			int eval;
 			chess::moveData reccomendedMove;
 		};
 
-		transpositionTable<(1 << 24)> TT { gameToTest };
+		transpositionTable<(1 << 16)> TT { gameToTest };
+        auto start = std::chrono::steady_clock::now();
 
-		auto alphaBeta = [&gameToTest, &nodes, &TT, &botToUse](const auto alphaBeta, int alpha, const int beta, const int ply, const bool capture) -> minimaxOutput {
-			if ((ply < 1 && !capture) || ply < maxQSearchPly) {
-#ifdef AI_DEBUG
-				nodes++;
-#endif
+		bool continueGame = true;
+		auto alphaBeta = [&gameToTest, &leafs, &TT, &botToUse, &continueGame, &start, &nodes](const auto alphaBeta, int alpha, const int beta, const int ply, const bool capture) -> minimaxOutput {
+            nodes++;
+            if ((ply < 1 && !capture) || ply < maxQSearchPly || !continueGame) {
+				leafs++;
 				return { botToUse.evaluate(gameToTest.currentPosition()), { 0, 0, 0 } };
 			}
+            if((leafs & 2047) == 2047){
+                auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
+
+                if(milliseconds > 3000){ // 3 seconds of thinking time.
+                    continueGame = false;
+                    leafs++;
+                    return { botToUse.evaluate(gameToTest.currentPosition()), { 0, 0, 0 } };
+                }
+            }
 			auto legalMoves = gameToTest.moves();
 			if (legalMoves.size() == 0) {
-				return {
-					(gameToTest.threeFoldRep() || gameToTest.currentPosition().halfMoveClock >= 50)
-						? -500
-						: (gameToTest.currentPosition().turn()
-					           ? (gameToTest.currentPosition().attackers(chess::util::ctz64(gameToTest.currentPosition().bitboards[chess::whiteKing]), black) ? -20000 - ply * 128 : -500)
-					           : (gameToTest.currentPosition().attackers(chess::util::ctz64(gameToTest.currentPosition().bitboards[chess::blackKing]), white) ? -20000 - ply * 128 : -500)),
-					{ 0, 0, 0 }
-				};
-			}
+                return {
+                    (gameToTest.threeFoldRep() || gameToTest.currentPosition().halfMoveClock >= 50)
+						   ? 0
+						   : (gameToTest.currentPosition().turn()
+					              ? (gameToTest.currentPosition().attackers(chess::util::ctz64(gameToTest.currentPosition().bitboards[chess::whiteKing]), black) ? ply * 128 - std::numeric_limits<int>::max() : 0)
+					              : (gameToTest.currentPosition().attackers(chess::util::ctz64(gameToTest.currentPosition().bitboards[chess::blackKing]), white) ? ply * 128 - std::numeric_limits<int>::max() : 0)),
+                    { 0, 0, 0 }
+                };
+            }
 
 			const int ttVal = TT.lookupEval(ply, alpha, beta);
 			if (ttVal != decltype(TT)::lookupFailed) {
-				return { ttVal, TT.getStoredMove() };
-			}
+                leafs++;
+                return { ttVal, TT.getStoredMove() };
+            }
 
 			int evalType      = decltype(TT)::upperBound;
 
@@ -296,16 +311,14 @@ namespace chess::ai {
 
 		minimaxOutput result { 0, { 0, 0, 0 } };
 		for (int i = 1; i <= searchPly; ++i) {
-			std::cerr << "Looking At Depth: " << i << '\n';
-			result = alphaBeta(alphaBeta, std::numeric_limits<short>::min(), std::numeric_limits<short>::max(), i, false);
-			std::cerr << "Total overwrites in transposition table: " << TT.getOverwrites() << '\n';
+			auto temp_result = alphaBeta(alphaBeta, -std::numeric_limits<int>::max(), std::numeric_limits<int>::max(), i, false);
+            if(temp_result.reccomendedMove == moveData{ 0, 0, 0 }){
+				break;
+			}else{
+				result = temp_result;
+			}
 		}
 
-#ifdef AI_DEBUG
-		std::cout << "Evaluated " << nodes << " nodes, Eval: " << result.eval << " Move:" << result.reccomendedMove.toString() << std::endl;
-		totalNodes += nodes;
-		std::cout << "Total Nodes Thus Far:" << totalNodes << std::endl;
-#endif
-		return result.reccomendedMove;
+		return { result.reccomendedMove, leafs, nodes};
 	}
 }    // namespace chess::ai
