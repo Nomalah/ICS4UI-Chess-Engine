@@ -1,6 +1,6 @@
 #include <string>
 
-#include "../include/chess.hpp"
+#include "chess.hpp"
 
 std::string chess::debugging::bitboardToString(u64 bitBoard) {
 	std::string result;

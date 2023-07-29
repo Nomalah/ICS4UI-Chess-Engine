@@ -2,6 +2,7 @@
 #define NMLH_CHESS_UTILS_HPP
 
 #include <string>
+#include <bit>
 
 #include "chess_types.hpp"
 
@@ -28,29 +29,17 @@ namespace chess::util {
 	// Intrinsic wrapper functions
 	// Count trailing zeros (of a number's binary representation)
 	[[nodiscard]] inline chess::square ctz64(const u64 bitboard) noexcept {
-#if defined(__clang__) || defined(__GNUC__)
-		return static_cast<chess::square>(__builtin_ctzll(bitboard));
-#else
-		static_assert(false, "Not a supported compiler platform - no known ctz function");
-#endif
+        return static_cast<chess::square>(std::countr_zero(bitboard));
 	}
 
 	// Count leading zeros (of a number's binary representation)
-	[[nodiscard]] inline chess::square clz64(const u64 bitboard) noexcept {
-#if defined(__clang__) || defined(__GNUC__)
-		return static_cast<chess::square>(__builtin_clzll(bitboard));
-#else
-		static_assert(false, "Not a supported compiler platform - no known clz function");
-#endif
+	[[nodiscard]] inline chess::square clz64(const u64 bitboard) noexcept { 
+        return static_cast<chess::square>(std::countl_zero(bitboard));
 	}
 
 	// Count the number of ones (in a number's binary representation)
 	[[nodiscard]] inline auto popcnt64(const u64 bitboard) noexcept {
-#if defined(__clang__) || defined(__GNUC__)
-		return __builtin_popcountll(bitboard);
-#else
-		static_assert(false, "Not a supported compiler platform - no known popcount function");
-#endif
+        return static_cast<chess::square>(std::popcount(bitboard));
 	}
 
 	// Expand to intergral types
@@ -102,6 +91,10 @@ namespace chess::util {
 			return negativeRayAttacks<direction>(squareFrom, occupiedSquares);
 		}
 	}
+
+    [[nodiscard]] constexpr chess::piece nullOf(chess::piece) noexcept {
+        return chess::piece::empty;
+    }
 }    // namespace util
 
 #endif    // NMLH_CHESS_UTILS_HPP

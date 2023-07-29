@@ -2,7 +2,7 @@
 #include <sstream>
 #include <string>
 
-#include "../include/chess.hpp"
+#include "chess.hpp"
 
 [[nodiscard]] std::string chess::position::ascii() const noexcept {
 	std::string result { " +--------+\n" };

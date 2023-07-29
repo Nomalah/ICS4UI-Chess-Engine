@@ -154,51 +154,39 @@ namespace chess::ai {
 			auto evaluateInsertLocation { moveEvaluationHeuristicList.begin() };
 			for (const auto moveToEvaluate : moveList) {
 				*evaluateInsertLocation = ((hashMove == moveToEvaluate) ? this->internalWeights.moveOrdering.hashMove : this->internalWeights.moveOrdering.notHashMove);
-				switch (moveToEvaluate.moveFlags()) {
-					// Promotion and capturing logic
-					case 0x0100 ... 0x0F00:
-						// Promotion
-						*evaluateInsertLocation += this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.promotionPiece()] * this->internalWeights.moveOrdering.promotionMultiplier;
-						break;
-					case 0x1100 ... 0x1F00:
-						// Promotion & Capture
-						*evaluateInsertLocation += this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.promotionPiece()] * this->internalWeights.moveOrdering.promotionMultiplier;
-						[[fallthrough]];
-					case 0x1000:
-						// Capture logic
-						*evaluateInsertLocation += (this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.capturedPiece()] - this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.movePiece()]) * this->internalWeights.moveOrdering.captureMultiplier;
-						break;
-
-					// Castling is probably a good idea
-					case 0x2000:
-						[[fallthrough]];
-					case 0x4000:
-						*evaluateInsertLocation += this->internalWeights.moveOrdering.kingsideCastling;
-						break;
-					case 0x3000:
-						[[fallthrough]];
-					case 0x5000:
-						*evaluateInsertLocation += this->internalWeights.moveOrdering.queensideCastling;
-						break;
-
-					// En passant doesn't really matter as it's very rare
-					case 0x6000:
-						[[fallthrough]];
-					case 0x7000:
-						*evaluateInsertLocation += this->internalWeights.moveOrdering.enPassant;
-						break;
-
-					// Pushing pawns is fun
-					case 0x8000:
-						[[fallthrough]];
-					case 0x9000:
-						*evaluateInsertLocation += this->internalWeights.moveOrdering.pawnDoublePush;
-						break;
-
-					// Default Bias/Weights
-					default:
-						*evaluateInsertLocation += this->internalWeights.moveOrdering.defaultMove;
-						break;
+				if (moveToEvaluate.moveFlags() >= 0x0100 && moveToEvaluate.moveFlags() <= 0x0F00) {
+                    // Promotion
+                    *evaluateInsertLocation += this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.promotionPiece()] * this->internalWeights.moveOrdering.promotionMultiplier;
+                } else if (moveToEvaluate.moveFlags() >= 0x1100 && moveToEvaluate.moveFlags() <= 0x1F00) {
+                    // Promotion & Capture
+                    *evaluateInsertLocation += this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.promotionPiece()] * this->internalWeights.moveOrdering.promotionMultiplier;
+                    *evaluateInsertLocation += (this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.capturedPiece()] - this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.movePiece()]) * this->internalWeights.moveOrdering.captureMultiplier;
+                } else if (moveToEvaluate.moveFlags() == 0x1000) {
+                    // Capture logic
+                    *evaluateInsertLocation += (this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.capturedPiece()] - this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.movePiece()]) * this->internalWeights.moveOrdering.captureMultiplier;
+                } else if (moveToEvaluate.moveFlags() == 0x2000) {
+                    // Kingside castling
+                    *evaluateInsertLocation += this->internalWeights.moveOrdering.kingsideCastling;
+                } else if (moveToEvaluate.moveFlags() == 0x3000) {
+                    // Queenside castling
+                    *evaluateInsertLocation += this->internalWeights.moveOrdering.queensideCastling;
+                } else if (moveToEvaluate.moveFlags() == 0x4000) {
+                    // En passant
+                    *evaluateInsertLocation += this->internalWeights.moveOrdering.enPassant;
+                } else if (moveToEvaluate.moveFlags() == 0x5000) {
+                    // En passant capture
+                    *evaluateInsertLocation += this->internalWeights.moveOrdering.enPassant;
+                    *evaluateInsertLocation += (this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.capturedPiece()] - this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.movePiece()]) * this->internalWeights.moveOrdering.captureMultiplier;
+                } else if (moveToEvaluate.moveFlags() == 0x6000) {
+                    // Pawn double push
+                    *evaluateInsertLocation += this->internalWeights.moveOrdering.pawnDoublePush;
+                } else if (moveToEvaluate.moveFlags() == 0x7000) {
+                    // Pawn double push capture
+                    *evaluateInsertLocation += this->internalWeights.moveOrdering.pawnDoublePush;
+                    *evaluateInsertLocation += (this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.capturedPiece()] - this->internalWeights.moveOrdering.pieceValues[moveToEvaluate.movePiece()]) * this->internalWeights.moveOrdering.captureMultiplier;
+                } else {
+                    // Default move
+                    *evaluateInsertLocation += this->internalWeights.moveOrdering.defaultMove;
 				}
 				++evaluateInsertLocation;
 			}

@@ -3,7 +3,7 @@
 #include <utility>
 #include <cassert>
 
-#include "../include/chess.hpp"
+#include "chess.hpp"
 
 void chess::game::move(const chess::moveData desiredMove) noexcept {
 	gameHistory.push_back(gameHistory.back().move(desiredMove));
