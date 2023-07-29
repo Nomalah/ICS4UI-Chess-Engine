@@ -1,6 +1,6 @@
 #include <iostream>
 
-#define AI_MAX_PLY 5
+#define AI_MAX_PLY 4
 
 #include "include/ai.hpp"
 

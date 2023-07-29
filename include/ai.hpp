@@ -20,8 +20,7 @@ namespace chess::ai {
 #else
 	constexpr int searchPly = 5;
 #endif
-	constexpr int maxQSearchPly = -20;
-	static_assert(searchPly > 1, "Ply Depth Too Small");
+	constexpr int maxQSearchPly = -40;
 	static_assert(searchPly - maxQSearchPly < ((1024 - sizeof(moveData*)) / sizeof(moveData)), "Ply Depth Too Large");
 
 	inline bool isACapture(chess::u16 flag) {
@@ -219,27 +218,29 @@ namespace chess::ai {
 			using namespace chess::util;
 			using namespace chess::constants;
 			static auto pieceValue = [&toEvaluate, this](chess::u8 piece) -> int {
-				return popcnt64(toEvaluate.bitboards[piece]) * this->internalWeights.evaluate.pieceValues[piece];
+				static constexpr int pieceValues[] = { 0, 100, 300, 310, 500, 900, 0, 0, 0, 100, 300, 310, 500, 900, 0 };
+				return popcnt64(toEvaluate.bitboards[piece]) * pieceValues[piece];
 			};
 
 			static auto positionalValue = [&toEvaluate](chess::u8 piece) -> int {
 				static constexpr chess::u64 positionValueCenter      = 0x0000001818000000;
 				static constexpr chess::u64 positionValueLargeCenter = 0x00003C3C3C3C0000;
-				//static constexpr int pieceValues[] = {0, -100, -300, -310, -500, -900, 0, 0, 0, 100, 300, 310, 500, 900, 0};
 				return popcnt64(toEvaluate.bitboards[piece] & positionValueCenter) * 50 + popcnt64(toEvaluate.bitboards[piece] & positionValueLargeCenter) * 25;
 			};
 
 			int result = 0;
-			result += pieceValue(whitePawn) + positionalValue(whitePawn);
-			result += pieceValue(whiteKnight) + positionalValue(whiteKnight);
-			result += pieceValue(whiteBishop) + positionalValue(whiteBishop);
-			result += pieceValue(whiteRook) + positionalValue(whiteRook);
-			result += pieceValue(whiteQueen) + positionalValue(whiteQueen);
-			result -= pieceValue(blackPawn) + positionalValue(blackPawn);
-			result -= pieceValue(blackKnight) + positionalValue(blackKnight);
-			result -= pieceValue(blackBishop) + positionalValue(blackBishop);
-			result -= pieceValue(blackRook) + positionalValue(blackRook);
-			result -= pieceValue(blackQueen) + positionalValue(blackQueen);
+			result += pieceValue(whitePawn);
+			result += pieceValue(whiteKnight);
+			result += pieceValue(whiteBishop);
+			result += pieceValue(whiteRook);
+			result += pieceValue(whiteQueen);
+			result += positionalValue(white);
+			result -= pieceValue(blackPawn);
+			result -= pieceValue(blackKnight);
+			result -= pieceValue(blackBishop);
+			result -= pieceValue(blackRook);
+			result -= pieceValue(blackQueen);
+			result -= positionalValue(black);
 			return toEvaluate.turn() ? result - toEvaluate.halfMoveClock * 4 : -result + toEvaluate.halfMoveClock * 4;
 		}
 	};
@@ -254,10 +255,10 @@ namespace chess::ai {
 			chess::moveData reccomendedMove;
 		};
 
-		transpositionTable<(1 << 24)> TT { gameToTest };
+		//transpositionTable<(1 << 24)> TT { gameToTest };
 
-		auto alphaBeta = [&gameToTest, &nodes, &TT, &botToUse](const auto alphaBeta, int alpha, const int beta, const int ply, const bool capture) -> minimaxOutput {
-			if (ply < 1 && !capture) {
+		auto alphaBeta = [&gameToTest, &nodes, /*&TT,*/ &botToUse](const auto alphaBeta, int alpha, const int beta, const int ply, const bool capture) -> minimaxOutput {
+			if ((ply < 1 && !capture) || ply < maxQSearchPly) {
 #ifdef AI_DEBUG
 				nodes++;
 #endif
@@ -275,39 +276,40 @@ namespace chess::ai {
 				};
 			}
 
-			const int ttVal = TT.lookupEval(ply, alpha, beta);
+			/*const int ttVal = TT.lookupEval(ply, alpha, beta);
 			if (ttVal != decltype(TT)::lookupFailed) {
 				return { ttVal, TT.getStoredMove() };
 			}
 
 			int evalType      = decltype(TT)::upperBound;
-
+            */
 			moveData bestMove = { 0, 0, 0 };
-			botToUse.orderMoves(legalMoves, TT);    // In place sorting of legalMoves
+			//botToUse.orderMoves(legalMoves, TT);    // In place sorting of legalMoves
 			for (auto legalMove : legalMoves) {
 				gameToTest.move(legalMove);
 				int posEval = -alphaBeta(alphaBeta, -beta, -alpha, ply - 1, isACapture(legalMove.flags)).eval;
+				if (ply == searchPly) {
+					std::cerr << legalMove.toString() << " : " << posEval << '\n';
+				}
 				gameToTest.undo();
+
 				if (posEval >= beta) {
-					TT.storeEval(ply, beta, decltype(TT)::lowerBound, bestMove);
+					//TT.storeEval(ply, beta, decltype(TT)::lowerBound, bestMove);
 					return { beta, bestMove };
 				}
 				if (posEval > alpha) {
-					evalType = decltype(TT)::exact;
+					//evalType = decltype(TT)::exact;
 					alpha    = posEval;
 					bestMove = legalMove;
 				}
 			}
-			TT.storeEval(ply, alpha, evalType, bestMove);
+			//TT.storeEval(ply, alpha, evalType, bestMove);
 			return { alpha, bestMove };
 		};
 
 		minimaxOutput result { 0, { 0, 0, 0 } };
-		for (int i = 1; i <= searchPly; ++i) {
-			std::cerr << "Looking At Depth: " << i << '\n';
-			result = alphaBeta(alphaBeta, std::numeric_limits<short>::min(), std::numeric_limits<short>::max(), i, false);
-			std::cerr << "Total overwrites in transposition table: " << TT.getOverwrites() << '\n';
-		}
+		result = alphaBeta(alphaBeta, std::numeric_limits<short>::min(), std::numeric_limits<short>::max(), searchPly, false);
+		std::cerr << "resulteval:" << result.eval << "\n";
 
 #ifdef AI_DEBUG
 		std::cout << "Evaluated " << nodes << " nodes, Eval: " << result.eval << " Move:" << result.reccomendedMove.toString() << std::endl;
