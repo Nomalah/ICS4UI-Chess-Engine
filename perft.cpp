@@ -39,24 +39,19 @@ perftResult perft(size_t testDepth, const std::string& fen) {
         if (depth == 1) {
             TIME(auto legalMoves = gameToTest.moves(), movesTime);
             for (chess::moveData legalMove : legalMoves) {
-                switch (legalMove.flags & 0xFF00) {
-                    case 0x6000:
-                        [[fallthrough]];
-                    case 0x7000:
-                        result.enPassant++;
-                        [[fallthrough]];
-                    case 0x1000:
-                        result.captures++;
-                        break;
-                    case 0x2000 ... 0x5000:
-                        result.castles++;
-                        break;
-                    case 0x1100 ... 0x1F00:
-                        result.captures++;
-                        [[fallthrough]];
-                    case 0x0100 ... 0x0F00:
-                        result.promotions++;
-                        break;
+                if ((legalMove.flags & 0xFF00) == 0x6000) {
+                    result.enPassant++;
+                } else if ((legalMove.flags & 0xFF00) == 0x7000) {
+                    result.enPassant++;
+                } else if ((legalMove.flags & 0xFF00) == 0x1000) {
+                    result.captures++;
+                } else if ((legalMove.flags & 0xFF00) >= 0x2000 && (legalMove.flags & 0xFF00) <= 0x5000) {
+                    result.castles++;
+                } else if ((legalMove.flags & 0xFF00) >= 0x1100 && (legalMove.flags & 0xFF00) <= 0x1F00) {
+                    result.captures++;
+                    result.promotions++;
+                } else if ((legalMove.flags & 0xFF00) >= 0x0100 && (legalMove.flags & 0xFF00) <= 0x0F00) {
+                    result.promotions++;
                 }
             }
             return legalMoves.size();

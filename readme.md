@@ -1,9 +1,9 @@
 # ICS4UI Chess Engine
 The project has multiple sections, with the examples for each shown:
-* [Chess Engine](/blob/main/engine.cpp)
-* [Perft](/blob/main/perft.cpp)
-* [Chess AI](/blob/main/ai.cpp)
-* [Python Integration](/blob/main/engine.py)
+* [Chess Engine](engine.cpp)
+* [Perft](perft.cpp)
+* [Chess AI](ai.cpp)
+* [Python Integration](engine.py)
 
 #
 ## Installing and running
